@@ -74,5 +74,9 @@
     <string name="plugin_secret_keep">gespeichert – leer lassen, um es beizubehalten</string>
     <string name="ok">OK</string>
     <string name="cancel">Abbrechen</string>
+    <string name="toggle_clock_label">Uhr ⇄ Rotation</string>
+    <string name="mode_clock_only">Matrix: nur Uhrzeit</string>
+    <string name="mode_rotation">Matrix: Rotation</string>
+    <string name="clock_only">Nur Uhrzeit anzeigen (statt Rotation). Umschalten auch per App-Symbol „Uhr ⇄ Rotation“ oder Schnelleinstellungs-Kachel.</string>
     <string name="toys_manager_missing">Glyph-Toy-Verwaltung nicht gefunden. Öffne Einstellungen → Glyph Interface.</string>
 </resources>

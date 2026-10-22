@@ -282,6 +282,17 @@ class ScreensTest {
     }
 
     @Test
+    fun clockOnlyReplacesTheRotationButNotDown() {
+        val clockOnly = defaults.copy(clockOnly = true, intervalSeconds = 3)
+        for (tick in listOf(0, 6, 12, 18)) {
+            assertArrayEquals(render(13, View.CLOCK, status()), Screens.compose(13, status(), clockOnly, tick, now, 12, 34, true))
+        }
+        assertArrayEquals(Screens.down(13, blinkOn = true), Screens.compose(13, status(up = false), clockOnly, 0, now, 12, 34, true))
+        val night = clockOnly.copy(nightEnabled = true, nightFrom = 22, nightTo = 6)
+        assertEquals(0, lit(Screens.compose(13, status(), night, 0, now, 23, 0, true)))
+    }
+
+    @Test
     fun downReasonPicksTheSign() {
         fun compose(reason: DownReason, tick: Int) =
             Screens.compose(13, status(up = false, reason = reason), defaults, tick, now, 12, 0, true)

@@ -188,6 +188,7 @@ object Screens {
                 IntArray(length * length)
             }
         }
+        if (settings.clockOnly) return view(length, View.CLOCK, status, settings, nowMillis, hour, minute, is24Hour, blinkOn)
         val slots = slots(status, settings, plugins, length)
         val ticksPerView = (settings.intervalSeconds * 1000 / TICK_MS).toInt().coerceAtLeast(1)
         return when (val slot = slots[(tick / ticksPerView) % slots.size]) {

@@ -59,7 +59,11 @@ class StatusToyService : Service() {
             when (msg.what) {
                 GlyphToy.MSG_GLYPH_TOY -> {
                     val event = msg.data?.getString(GlyphToy.MSG_GLYPH_TOY_DATA)
-                    if (GlyphToy.EVENT_AOD == event) refreshStatus()
+                    when (event) {
+                        GlyphToy.EVENT_AOD -> refreshStatus()
+                        // Long press on the Glyph Button (Phone (3) only): clock only <-> rotation.
+                        GlyphToy.EVENT_CHANGE -> displayStore?.toggleClockOnly()
+                    }
                 }
                 else -> super.handleMessage(msg)
             }

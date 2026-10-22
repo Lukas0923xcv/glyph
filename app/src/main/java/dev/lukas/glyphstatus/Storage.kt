@@ -177,6 +177,8 @@ data class DisplaySettings(
     val nightTo: Int = 7,
     /** Overall matrix brightness in percent (10..100), applied to everything. */
     val brightness: Int = 100,
+    /** Show only the clock instead of the rotation (DOWN still takes over). */
+    val clockOnly: Boolean = false,
 ) {
     fun design(view: Screens.View): Screens.Design = designs[view] ?: Screens.Design.TEXT
 
@@ -195,6 +197,13 @@ data class DisplaySettings(
 }
 
 class DisplaySettingsStore(context: Context) {
+
+    /** Switches between "clock only" and the rotation; returns the new state. */
+    fun toggleClockOnly(): Boolean {
+        val settings = load()
+        save(settings.copy(clockOnly = !settings.clockOnly))
+        return !settings.clockOnly
+    }
 
     val prefs: SharedPreferences = context.getSharedPreferences("display", Context.MODE_PRIVATE)
 
@@ -221,6 +230,7 @@ class DisplaySettingsStore(context: Context) {
             nightFrom = prefs.getInt(KEY_NIGHT_FROM, default.nightFrom),
             nightTo = prefs.getInt(KEY_NIGHT_TO, default.nightTo),
             brightness = prefs.getInt(KEY_BRIGHTNESS, default.brightness),
+            clockOnly = prefs.getBoolean(KEY_CLOCK_ONLY, default.clockOnly),
         )
     }
 
@@ -241,6 +251,7 @@ class DisplaySettingsStore(context: Context) {
             .putInt(KEY_NIGHT_FROM, settings.nightFrom)
             .putInt(KEY_NIGHT_TO, settings.nightTo)
             .putInt(KEY_BRIGHTNESS, settings.brightness)
+            .putBoolean(KEY_CLOCK_ONLY, settings.clockOnly)
             .apply()
     }
 
@@ -257,5 +268,6 @@ class DisplaySettingsStore(context: Context) {
         const val KEY_NIGHT_FROM = "night_from"
         const val KEY_NIGHT_TO = "night_to"
         const val KEY_BRIGHTNESS = "brightness"
+        const val KEY_CLOCK_ONLY = "clock_only"
     }
 }

@@ -28,6 +28,9 @@ Der Toy zeigt, ob dein Proxmox-Server erreichbar ist:
 
 Weitere Einstellungen in der App:
 
+- **Nur Uhrzeit**: statt der Rotation nur die Uhr (Server-DOWN hat weiter Vorrang). Umschalten per Häkchen in der App,
+  per zweitem App-Symbol **„Uhr ⇄ Rotation“** (öffnet kein Fenster – geeignet für eine Taste, die „App öffnen“ kann),
+  per Schnelleinstellungs-Kachel oder auf dem Phone (3) per langem Druck auf den Glyph-Button.
 - **Helligkeit**: Schieberegler 10–100 % für die ganze Matrix; die Matrix folgt beim Schieben sofort.
 - **Helligkeit nach Auslastung**: CPU/RAM/Disk unter 50 % gedimmt, ab 80 % volle Helligkeit.
 - **Warnungen**: Schwellen für CPU, RAM und Disk; außerdem fehlgeschlagenes Backup, Disk-Fehler, verlorenes Quorum.

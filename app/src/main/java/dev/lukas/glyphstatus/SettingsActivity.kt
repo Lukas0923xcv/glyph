@@ -40,6 +40,7 @@ class SettingsActivity : Activity() {
     private val scope = MainScope()
     private lateinit var store: ConfigStore
     private lateinit var pluginStore: PluginStore
+    private lateinit var clockOnlyBox: CheckBox
 
     private lateinit var host: EditText
     private lateinit var tokenId: EditText
@@ -214,7 +215,8 @@ class SettingsActivity : Activity() {
         val displayStore = DisplaySettingsStore(applicationContext)
         var settings = displayStore.load()
         fun update(change: (DisplaySettings) -> DisplaySettings) {
-            settings = change(settings)
+            // Start from what is stored: the tile, launcher entry or Glyph Button may have changed it meanwhile.
+            settings = change(displayStore.load())
             displayStore.save(settings)
         }
 
@@ -262,6 +264,11 @@ class SettingsActivity : Activity() {
         val intervals = DisplaySettings.INTERVAL_CHOICES
         bindSpinner(R.id.interval, intervals.map { getString(R.string.interval_seconds, it) }, intervals.indexOf(settings.intervalSeconds)) { i ->
             update { it.copy(intervalSeconds = intervals[i]) }
+        }
+
+        clockOnlyBox = requireViewById<CheckBox>(R.id.clock_only).apply {
+            isChecked = settings.clockOnly
+            setOnCheckedChangeListener { _, checked -> update { it.copy(clockOnly = checked) } }
         }
 
         val brightnessLabel = requireViewById<TextView>(R.id.brightness_label)
@@ -342,6 +349,12 @@ class SettingsActivity : Activity() {
                 }
             })
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Clock only may have been toggled from the launcher entry, the tile or the Glyph Button.
+        if (::clockOnlyBox.isInitialized) clockOnlyBox.isChecked = DisplaySettingsStore(applicationContext).load().clockOnly
     }
 
     override fun onDestroy() {

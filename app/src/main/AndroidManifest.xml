@@ -25,6 +25,35 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ToggleClockActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:icon="@drawable/ic_toggle_clock"
+            android:label="@string/toggle_clock_label"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".ClockToggleTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_toggle_clock"
+            android:label="@string/toggle_clock_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
         <service
             android:name=".StatusToyService"
             android:exported="true"
@@ -47,6 +76,10 @@
                 android:value="dev.lukas.glyphstatus.SettingsActivity" />
             <meta-data
                 android:name="com.nothing.glyph.toy.aod_support"
+                android:value="1" />
+            <!-- Phone (3): long press on the Glyph Button toggles clock only / rotation -->
+            <meta-data
+                android:name="com.nothing.glyph.toy.longpress"
                 android:value="1" />
         </service>
     </application>
