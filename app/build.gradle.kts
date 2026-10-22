@@ -15,6 +15,17 @@ android {
         versionName = "1.0"
     }
 
+    // Fixed debug key so every CI build can be installed over the previous one
+    // (CI runners would otherwise generate a new random debug key per build).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
