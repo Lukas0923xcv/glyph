@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.text.format.DateFormat
 import android.util.Log
 import com.nothing.ketchum.Common
 import com.nothing.ketchum.Glyph
@@ -20,6 +21,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Calendar
 
 class StatusToyService : Service() {
 
@@ -31,9 +33,10 @@ class StatusToyService : Service() {
     private var connected = false
     private var matrixLength = 25
 
-    /** null = unknown (nothing cached yet). */
-    private var serverUp: Boolean? = null
-    private var blinkOn = true
+    /** null = never checked. */
+    private var status: CachedStatus? = null
+    private var tick = 0
+    private var lastFrame: IntArray? = null
 
     private val toyHandler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
@@ -53,6 +56,7 @@ class StatusToyService : Service() {
             val gmm = glyphMatrixManager ?: return
             gmm.register(if (Common.is25111p()) Glyph.DEVICE_25111p else Glyph.DEVICE_23112)
             connected = true
+            lastFrame = null
             render()
         }
 
@@ -61,29 +65,32 @@ class StatusToyService : Service() {
         }
     }
 
-    private val blinkRunnable = object : Runnable {
+    /** Drives blinking (every tick) and the view rotation (every [TICKS_PER_VIEW] ticks). */
+    private val ticker = object : Runnable {
         override fun run() {
-            blinkOn = !blinkOn
+            tick++
             render()
-            mainHandler.postDelayed(this, BLINK_INTERVAL_MS)
+            mainHandler.postDelayed(this, TICK_MS)
         }
     }
 
     override fun onBind(intent: Intent?): IBinder {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         matrixLength = Common.getDeviceMatrixLength().takeIf { it == 13 || it == 25 } ?: 25
-        serverUp = StatusCache(this).lastUp()
+        status = StatusCache(this).load()
+        tick = 0
+        lastFrame = null
 
         glyphMatrixManager = GlyphMatrixManager.getInstance(applicationContext).also {
             it.init(gmmCallback)
         }
-        updateBlinking()
+        mainHandler.postDelayed(ticker, TICK_MS)
         refreshStatus()
         return serviceMessenger.binder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        mainHandler.removeCallbacks(blinkRunnable)
+        mainHandler.removeCallbacks(ticker)
         scope?.cancel()
         scope = null
         checkJob = null
@@ -107,35 +114,44 @@ class StatusToyService : Service() {
                 }
             }
             Log.d(TAG, "Status: up=${result.up} (${result.message})")
-            StatusCache(applicationContext).store(result.up)
-            serverUp = result.up
-            updateBlinking()
+            val newStatus = CachedStatus(
+                up = result.up,
+                uptimeSeconds = result.uptimeSeconds,
+                guestsRunning = result.guestsRunning,
+                guestsTotal = result.guestsTotal,
+                checkedAtMillis = System.currentTimeMillis(),
+            )
+            StatusCache(applicationContext).store(newStatus)
+            status = newStatus
             render()
-        }
-    }
-
-    private fun updateBlinking() {
-        mainHandler.removeCallbacks(blinkRunnable)
-        blinkOn = true
-        if (serverUp == false) {
-            mainHandler.postDelayed(blinkRunnable, BLINK_INTERVAL_MS)
         }
     }
 
     private fun render() {
         val gmm = glyphMatrixManager ?: return
         if (!connected) return
-        val frame = when (serverUp) {
-            true -> MatrixIcons.toFrame(MatrixIcons.check(matrixLength), MatrixIcons.BRIGHTNESS_UP)
-            false -> if (blinkOn) {
-                MatrixIcons.toFrame(MatrixIcons.cross(matrixLength), MatrixIcons.BRIGHTNESS_DOWN)
-            } else {
-                IntArray(matrixLength * matrixLength)
-            }
-            null -> IntArray(matrixLength * matrixLength)
+        val current = status
+        val frame = if (current?.up == false) {
+            Screens.down(matrixLength, blinkOn = tick % 2 == 0)
+        } else {
+            val views = Screens.views(current)
+            val view = views[(tick / TICKS_PER_VIEW) % views.size]
+            val now = Calendar.getInstance()
+            Screens.view(
+                length = matrixLength,
+                view = view,
+                status = current,
+                nowMillis = now.timeInMillis,
+                hour = now.get(Calendar.HOUR_OF_DAY),
+                minute = now.get(Calendar.MINUTE),
+                is24Hour = DateFormat.is24HourFormat(this),
+            )
         }
+        // Only push to the matrix when the picture actually changes.
+        if (lastFrame?.contentEquals(frame) == true) return
         try {
             gmm.setMatrixFrame(frame)
+            lastFrame = frame
         } catch (e: Exception) {
             Log.w(TAG, "setMatrixFrame failed", e)
         }
@@ -143,6 +159,9 @@ class StatusToyService : Service() {
 
     private companion object {
         const val TAG = "StatusToyService"
-        const val BLINK_INTERVAL_MS = 500L
+        /** Blink half-period of the DOWN cross. */
+        const val TICK_MS = 500L
+        /** 10 x 500 ms = each view is shown for 5 s. */
+        const val TICKS_PER_VIEW = 10
     }
 }

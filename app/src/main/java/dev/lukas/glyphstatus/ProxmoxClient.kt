@@ -11,7 +11,15 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
-data class CheckResult(val up: Boolean, val message: String)
+data class CheckResult(
+    val up: Boolean,
+    val message: String,
+    /** Uptime of the most recently booted online node, in seconds. */
+    val uptimeSeconds: Long? = null,
+    /** Running / total VMs and LXC containers (templates excluded). */
+    val guestsRunning: Int? = null,
+    val guestsTotal: Int? = null,
+)
 
 object ProxmoxClient {
 
@@ -20,6 +28,7 @@ object ProxmoxClient {
     /**
      * Blocking. Must not be called on the main thread.
      * UP only if the request succeeds and every node reports "status": "online".
+     * When UP, the guest counts are fetched as well; their failure does not affect UP.
      */
     fun check(config: ServerConfig): CheckResult {
         val base = config.host.trim().trimEnd('/').toHttpUrlOrNull()
@@ -27,7 +36,6 @@ object ProxmoxClient {
         if (config.tokenId.isBlank() || config.secret.isBlank()) {
             return CheckResult(false, "Token-ID oder Secret fehlt")
         }
-        val url = base.newBuilder().addPathSegments("api2/json/nodes").build()
 
         val client = try {
             buildClient(config.fingerprint)
@@ -35,31 +43,76 @@ object ProxmoxClient {
             return CheckResult(false, e.message ?: "Ungültiger Fingerprint")
         }
 
-        val request = try {
-            Request.Builder()
-                .url(url)
-                .header("Authorization", "PVEAPIToken=${config.tokenId.trim()}=${config.secret.trim()}")
-                .get()
-                .build()
+        val auth = "PVEAPIToken=${config.tokenId.trim()}=${config.secret.trim()}"
+        fun request(path: String, query: Pair<String, String>? = null) = Request.Builder()
+            .url(
+                base.newBuilder().addPathSegments(path)
+                    .apply { query?.let { addQueryParameter(it.first, it.second) } }
+                    .build()
+            )
+            .header("Authorization", auth)
+            .get()
+            .build()
+
+        val nodesRequest = try {
+            request("api2/json/nodes")
         } catch (e: IllegalArgumentException) {
             return CheckResult(false, "Ungültige Zeichen in Token-ID oder Secret")
         }
 
-        return try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return CheckResult(false, "HTTP ${response.code} ${response.message}".trim())
+        try {
+            val status = try {
+                client.newCall(nodesRequest).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return CheckResult(false, "HTTP ${response.code} ${response.message}".trim())
+                    }
+                    evaluateNodes(response.body?.string().orEmpty())
                 }
-                evaluate(response.body?.string().orEmpty())
+            } catch (e: Exception) {
+                return CheckResult(false, "${e.javaClass.simpleName}: ${e.message ?: "Verbindungsfehler"}")
             }
-        } catch (e: Exception) {
-            CheckResult(false, "${e.javaClass.simpleName}: ${e.message ?: "Verbindungsfehler"}")
+            if (!status.up) return status
+
+            val guests = try {
+                client.newCall(request("api2/json/cluster/resources", "type" to "vm")).execute().use { response ->
+                    if (response.isSuccessful) countGuests(response.body?.string().orEmpty()) else null
+                }
+            } catch (e: Exception) {
+                null
+            }
+            return if (guests == null) {
+                status.copy(message = "${status.message} · VMs/LXC nicht lesbar")
+            } else {
+                status.copy(
+                    message = "${status.message} · ${guests.first}/${guests.second} VMs/LXC laufen",
+                    guestsRunning = guests.first,
+                    guestsTotal = guests.second,
+                )
+            }
         } finally {
             client.connectionPool.evictAll()
         }
     }
 
-    private fun evaluate(body: String): CheckResult {
+    /** Returns (running, total) for VMs and LXC containers, ignoring templates. */
+    private fun countGuests(body: String): Pair<Int, Int>? {
+        val guests = try {
+            JSONObject(body).getJSONArray("data")
+        } catch (e: Exception) {
+            return null
+        }
+        var running = 0
+        var total = 0
+        for (i in 0 until guests.length()) {
+            val guest = guests.getJSONObject(i)
+            if (guest.optInt("template", 0) == 1) continue
+            total++
+            if (guest.optString("status") == "running") running++
+        }
+        return running to total
+    }
+
+    private fun evaluateNodes(body: String): CheckResult {
         val nodes = try {
             JSONObject(body).getJSONArray("data")
         } catch (e: Exception) {
@@ -68,14 +121,19 @@ object ProxmoxClient {
         if (nodes.length() == 0) return CheckResult(false, "Keine Nodes in der Antwort")
 
         val offline = mutableListOf<String>()
+        var uptime: Long? = null
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
             if (node.optString("status") != "online") {
                 offline += "${node.optString("node", "?")} (${node.optString("status", "unbekannt")})"
+            } else if (node.has("uptime")) {
+                val seconds = node.optLong("uptime")
+                uptime = uptime?.let { minOf(it, seconds) } ?: seconds
             }
         }
         return if (offline.isEmpty()) {
-            CheckResult(true, "${nodes.length()} Node(s) online")
+            val uptimeText = uptime?.let { " · Uptime ${it / 86_400} T ${it % 86_400 / 3_600} h" }.orEmpty()
+            CheckResult(true, "${nodes.length()} Node(s) online$uptimeText", uptimeSeconds = uptime)
         } else {
             CheckResult(false, "Nicht online: ${offline.joinToString()}")
         }
@@ -86,7 +144,6 @@ object ProxmoxClient {
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .callTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(false)
 
         // Without a fingerprint OkHttp keeps the system CAs and the default hostname verifier.
         if (fingerprint.isNotBlank()) {

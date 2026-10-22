@@ -7,18 +7,17 @@ import org.junit.Test
 class MatrixIconsTest {
 
     @Test
-    fun iconsHaveMatrixSizeAndStayInsideTheCircle() {
+    fun crossHasMatrixSizeAndStaysInsideTheCircle() {
         for (length in listOf(13, 25)) {
-            for (icon in listOf(MatrixIcons.check(length), MatrixIcons.cross(length))) {
-                assertEquals(length, icon.size)
-                icon.forEachIndexed { y, row ->
-                    assertEquals(length, row.length)
-                    row.forEachIndexed { x, c ->
-                        if (c == '#') assertTrue("($x,$y) outside $length", MatrixIcons.isVisible(length, x, y))
-                    }
+            val icon = MatrixIcons.cross(length)
+            assertEquals(length, icon.size)
+            icon.forEachIndexed { y, row ->
+                assertEquals(length, row.length)
+                row.forEachIndexed { x, c ->
+                    if (c == '#') assertTrue("($x,$y) outside $length", MatrixIcons.isVisible(length, x, y))
                 }
-                assertTrue(icon.any { '#' in it })
             }
+            assertTrue(icon.any { '#' in it })
         }
     }
 

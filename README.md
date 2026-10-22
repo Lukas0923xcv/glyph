@@ -3,12 +3,17 @@
 Glyph Toy für die Glyph Matrix (Nothing Phone (3) 25×25, Phone (4a) Pro 13×13).
 Der Toy zeigt, ob dein Proxmox-Server erreichbar ist:
 
-- **UP** (Anfrage erfolgreich und alle Nodes `online`): Häkchen, mittlere Helligkeit
-- **DOWN** (Timeout nach 5 s, HTTP-Fehler, Node nicht online, kein Netz): X, volle Helligkeit, blinkt im 500-ms-Takt
+- **UP** (Anfrage erfolgreich und alle Nodes `online`): Die Matrix wechselt alle 5 s zwischen
+  1. **Uptime**, z. B. `42d` (unter einem Tag in Stunden, z. B. `5h`)
+  2. **laufende VMs und LXC-Container**, z. B. `7/9` (Templates zählen nicht mit; passt die Zahl nicht aufs Display, nur die laufenden)
+  3. **Uhrzeit** (12/24 h wie in den Android-Einstellungen)
+- **DOWN** (Timeout nach 5 s, HTTP-Fehler, Node nicht online, kein Netz): X, volle Helligkeit, blinkt im 500-ms-Takt und ersetzt alle Ansichten
 
-![Vorschau: UP und DOWN auf Phone (3) und Phone (4a) Pro](docs/preview.gif)
+![Vorschau: Uptime, VMs/LXC, Uhr und DOWN auf Phone (4a) Pro und Phone (3)](docs/preview.gif)
 
-Abgefragt wird `GET {host}/api2/json/nodes` beim Aktivieren des Toys und bei jedem AOD-Event (ca. 1× pro Minute).
+Abgefragt werden `GET {host}/api2/json/nodes` und `GET {host}/api2/json/cluster/resources?type=vm` beim Aktivieren
+des Toys und bei jedem AOD-Event (ca. 1× pro Minute). Kann die VM-Liste nicht gelesen werden, bleibt der Status UP
+und die VM-Ansicht entfällt.
 
 ## 1. API-Token in Proxmox anlegen
 
@@ -61,7 +66,8 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 - `app/libs/glyph-matrix-sdk-2.0.aar` – Glyph Matrix SDK aus dem
   [GlyphMatrix-Developer-Kit](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit)
-- `StatusToyService` – Glyph-Toy-Service (Bind/Unbind, AOD-Event, Blinken)
+- `StatusToyService` – Glyph-Toy-Service (Bind/Unbind, AOD-Event, Rotation, Blinken)
+- `Screens` / `MatrixText` – Ansichten (Uptime, VMs/LXC, Uhr, DOWN) und Pixel-Schrift 3×5 bzw. 5×7
 - `ProxmoxClient` – HTTP-Abfrage (OkHttp, 5 s Timeout) und Zertifikat-Pinning
-- `MatrixIcons` – Pixel-Icons für 25×25 und 13×13, alle innerhalb des runden Sichtbereichs
+- `MatrixIcons` – DOWN-Icon für 25×25 und 13×13 und die runde Sichtbarkeitsmaske
 - `SettingsActivity` / `Storage` – Einstellungen; Zugangsdaten in EncryptedSharedPreferences
