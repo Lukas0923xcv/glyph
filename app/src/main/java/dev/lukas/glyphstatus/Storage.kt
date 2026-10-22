@@ -175,6 +175,8 @@ data class DisplaySettings(
     val nightEnabled: Boolean = false,
     val nightFrom: Int = 23,
     val nightTo: Int = 7,
+    /** Overall matrix brightness in percent (10..100), applied to everything. */
+    val brightness: Int = 100,
 ) {
     fun design(view: Screens.View): Screens.Design = designs[view] ?: Screens.Design.TEXT
 
@@ -218,6 +220,7 @@ class DisplaySettingsStore(context: Context) {
             nightEnabled = prefs.getBoolean(KEY_NIGHT, default.nightEnabled),
             nightFrom = prefs.getInt(KEY_NIGHT_FROM, default.nightFrom),
             nightTo = prefs.getInt(KEY_NIGHT_TO, default.nightTo),
+            brightness = prefs.getInt(KEY_BRIGHTNESS, default.brightness),
         )
     }
 
@@ -237,6 +240,7 @@ class DisplaySettingsStore(context: Context) {
             .putBoolean(KEY_NIGHT, settings.nightEnabled)
             .putInt(KEY_NIGHT_FROM, settings.nightFrom)
             .putInt(KEY_NIGHT_TO, settings.nightTo)
+            .putInt(KEY_BRIGHTNESS, settings.brightness)
             .apply()
     }
 
@@ -252,5 +256,6 @@ class DisplaySettingsStore(context: Context) {
         const val KEY_NIGHT = "night_enabled"
         const val KEY_NIGHT_FROM = "night_from"
         const val KEY_NIGHT_TO = "night_to"
+        const val KEY_BRIGHTNESS = "brightness"
     }
 }

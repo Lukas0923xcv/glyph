@@ -121,8 +121,25 @@ object Screens {
         }
     }
 
-    /** The complete picture for timer tick [tick]. */
+    /** The complete picture for timer tick [tick], dimmed to the chosen overall brightness. */
     fun compose(
+        length: Int,
+        status: CachedStatus?,
+        settings: DisplaySettings,
+        tick: Int,
+        nowMillis: Long,
+        hour: Int,
+        minute: Int,
+        is24Hour: Boolean,
+    ): IntArray {
+        val frame = picture(length, status, settings, tick, nowMillis, hour, minute, is24Hour)
+        val brightness = settings.brightness.coerceIn(MIN_BRIGHTNESS, 100)
+        return if (brightness == 100) frame else MatrixGraphics.scale(frame, brightness / 100.0)
+    }
+
+    const val MIN_BRIGHTNESS = 10
+
+    private fun picture(
         length: Int,
         status: CachedStatus?,
         settings: DisplaySettings,

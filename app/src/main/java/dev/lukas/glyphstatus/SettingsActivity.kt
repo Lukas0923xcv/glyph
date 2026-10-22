@@ -13,6 +13,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -116,6 +117,25 @@ class SettingsActivity : Activity() {
         val intervals = DisplaySettings.INTERVAL_CHOICES
         bindSpinner(R.id.interval, intervals.map { getString(R.string.interval_seconds, it) }, intervals.indexOf(settings.intervalSeconds)) { i ->
             update { it.copy(intervalSeconds = intervals[i]) }
+        }
+
+        val brightnessLabel = requireViewById<TextView>(R.id.brightness_label)
+        brightnessLabel.text = getString(R.string.brightness_label, settings.brightness)
+        requireViewById<SeekBar>(R.id.brightness).apply {
+            min = Screens.MIN_BRIGHTNESS
+            max = 100
+            progress = settings.brightness
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                // Saved while dragging so the matrix follows the slider live.
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (!fromUser) return
+                    brightnessLabel.text = getString(R.string.brightness_label, progress)
+                    update { it.copy(brightness = progress) }
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
         }
 
         requireViewById<CheckBox>(R.id.brightness_by_load).apply {

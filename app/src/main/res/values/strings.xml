@@ -40,6 +40,7 @@
     <string name="design_ring">Ring</string>
     <string name="design_history">Verlauf</string>
     <string name="design_dots">Punkte</string>
+    <string name="brightness_label">Helligkeit: %1$d %%</string>
     <string name="brightness_by_load">Helligkeit nach Auslastung (CPU/RAM/Disk: gedimmt unter 50 %, voll ab 80 %)</string>
     <string name="section_alerts">Warnungen</string>
     <string name="alerts_hint">Werte über der Schwelle, fehlgeschlagenes Backup, Disk-Fehler oder verlorenes Quorum.</string>

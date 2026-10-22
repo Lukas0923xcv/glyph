@@ -268,6 +268,20 @@
         </LinearLayout>
 
 
+        <TextView
+            android:id="@+id/brightness_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:labelFor="@id/brightness" />
+
+        <SeekBar
+            android:id="@+id/brightness"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:min="10" />
+
         <CheckBox
             android:id="@+id/brightness_by_load"
             android:layout_width="match_parent"

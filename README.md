@@ -28,6 +28,7 @@ Der Toy zeigt, ob dein Proxmox-Server erreichbar ist:
 
 Weitere Einstellungen in der App:
 
+- **Helligkeit**: Schieberegler 10–100 % für die ganze Matrix; die Matrix folgt beim Schieben sofort.
 - **Helligkeit nach Auslastung**: CPU/RAM/Disk unter 50 % gedimmt, ab 80 % volle Helligkeit.
 - **Warnungen**: Schwellen für CPU, RAM und Disk; außerdem fehlgeschlagenes Backup, Disk-Fehler, verlorenes Quorum.
   Modus *nur Warnungen zeigen* (Rotation nur noch über die kritischen Werte) oder

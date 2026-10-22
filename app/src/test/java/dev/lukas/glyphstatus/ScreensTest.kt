@@ -237,6 +237,18 @@ class ScreensTest {
     }
 
     @Test
+    fun overallBrightnessDimsEverything() {
+        fun brightest(percent: Int, s: CachedStatus = status()) =
+            Screens.compose(13, s, defaults.copy(brightness = percent), 0, now, 12, 34, true).max()
+        assertEquals(MatrixText.BRIGHTNESS_DIGIT, brightest(100))
+        assertEquals(128, brightest(50))
+        assertTrue(brightest(10) in 1..30)
+        // the DOWN cross is dimmed too, but never disappears
+        assertEquals(26, brightest(10, status(up = false)))
+        assertEquals(lit(Screens.down(13, blinkOn = true)), lit(Screens.compose(13, status(up = false), defaults.copy(brightness = 10), 0, now, 12, 34, true)))
+    }
+
+    @Test
     fun alertsOverrideOrInterleave() {
         val hot = status(cpu = 95, backup = false)
         val only = defaults.copy(alertMode = AlertMode.ONLY)
