@@ -125,23 +125,65 @@
             android:layout_height="wrap_content"
             android:text="@string/view_uptime" />
 
-        <CheckBox
-            android:id="@+id/view_guests"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/view_guests" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <CheckBox
-            android:id="@+id/view_cpu"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/view_cpu" />
+            <CheckBox
+                android:id="@+id/view_guests"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/view_guests" />
 
-        <CheckBox
-            android:id="@+id/view_mem"
+            <Spinner
+                android:id="@+id/design_guests"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/design_label" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/view_mem" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/view_cpu"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/view_cpu" />
+
+            <Spinner
+                android:id="@+id/design_cpu"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/design_label" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/view_mem"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/view_mem" />
+
+            <Spinner
+                android:id="@+id/design_mem"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/design_label" />
+        </LinearLayout>
 
         <CheckBox
             android:id="@+id/view_load"
@@ -149,11 +191,25 @@
             android:layout_height="wrap_content"
             android:text="@string/view_load" />
 
-        <CheckBox
-            android:id="@+id/view_disk"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/view_disk" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/view_disk"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/view_disk" />
+
+            <Spinner
+                android:id="@+id/design_disk"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/design_label" />
+        </LinearLayout>
 
         <CheckBox
             android:id="@+id/view_net"
@@ -166,6 +222,24 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/view_backup" />
+
+        <CheckBox
+            android:id="@+id/view_updates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_updates" />
+
+        <CheckBox
+            android:id="@+id/view_health"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_health" />
+
+        <CheckBox
+            android:id="@+id/view_quorum"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_quorum" />
 
         <CheckBox
             android:id="@+id/view_clock"
@@ -191,6 +265,145 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+
+        <CheckBox
+            android:id="@+id/brightness_by_load"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/brightness_by_load" />
+
+        <TextView
+            style="@android:style/TextAppearance.DeviceDefault.Medium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/section_alerts" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/alerts_hint" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/alert_mode"
+                android:text="@string/label_alert_mode" />
+
+            <Spinner
+                android:id="@+id/alert_mode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/cpu_alert"
+                android:text="@string/label_cpu_alert" />
+
+            <EditText
+                android:id="@+id/cpu_alert"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:ems="2"
+                android:importantForAutofill="no"
+                android:inputType="number"
+                android:maxLength="3" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/mem_alert"
+                android:text="@string/label_mem_alert" />
+
+            <EditText
+                android:id="@+id/mem_alert"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:ems="2"
+                android:importantForAutofill="no"
+                android:inputType="number"
+                android:maxLength="3" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/disk_alert"
+                android:text="@string/label_disk_alert" />
+
+            <EditText
+                android:id="@+id/disk_alert"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:ems="2"
+                android:importantForAutofill="no"
+                android:inputType="number"
+                android:maxLength="3" />
+        </LinearLayout>
+
+        <TextView
+            style="@android:style/TextAppearance.DeviceDefault.Medium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/section_night" />
+
+        <CheckBox
+            android:id="@+id/night_enabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/night_enabled" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/night_from"
+                android:text="@string/label_night_from" />
+
+            <Spinner
+                android:id="@+id/night_from"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:labelFor="@id/night_to"
+                android:text="@string/label_night_to" />
+
+            <Spinner
+                android:id="@+id/night_to"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
         </LinearLayout>
 
         <Button

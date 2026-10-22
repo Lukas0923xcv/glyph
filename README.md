@@ -3,38 +3,57 @@
 Glyph Toy für die Glyph Matrix (Nothing Phone (3) 25×25, Phone (4a) Pro 13×13).
 Der Toy zeigt, ob dein Proxmox-Server erreichbar ist:
 
-- **UP** (Anfrage erfolgreich und alle Nodes `online`): Die Matrix wechselt zwischen den Ansichten,
-  die du in der App unter *Anzeige auf der Matrix* auswählst (Standard: Uptime, VMs/LXC, Uhr):
+- **UP**: Die Matrix wechselt zwischen den Ansichten, die du in der App unter *Anzeige auf der Matrix* auswählst
+  (Standard: Uptime, VMs/LXC, Uhr). Wechselzeit 3–60 s, Änderungen gelten sofort, auch bei laufendem Toy.
 
-  | Ansicht | Beispiel | Bedeutung |
+  | Ansicht | Anzeige | Designs |
   |---|---|---|
-  | Uptime | `42d` | Tage seit dem Boot (unter einem Tag in Stunden, z. B. `5h`) |
-  | VMs/LXC | `7/9` | laufend / gesamt, ohne Templates; ab zweistelligen Zahlen als Bruch (`12` über `15`) |
-  | CPU | `C35` | CPU-Last in % (bei mehreren Nodes die höchste) |
-  | RAM | `R62` | RAM-Belegung in % (bei mehreren Nodes die höchste) |
-  | Load | `L0.5` | Load Average (1 min); ab 10 ohne Nachkommastelle (`L12`) |
-  | Disk | `D47` | Belegung aller Storages mit VM-Disks/Containern (Content `images`/`rootdir`) zusammen, in % |
-  | Netz | `N12` | Netzwerk-Durchsatz in + out in Mbit/s (Mittel der letzten Minute); auf 13×13 max. `N99` |
-  | Backup | `B✓` / `B✗` | Ergebnis des zuletzt beendeten Backup-Jobs (vzdump); Warnungen zählen als OK |
-  | Uhr | `12` / `34` | Uhrzeit, 12/24 h wie in den Android-Einstellungen |
+  | Uptime | `42d` (unter einem Tag `5h`) | – |
+  | VMs/LXC | `7/9`, ab zweistellig als Bruch `12` über `15` | Text · Punkte (1 Punkt pro VM/LXC: hell = läuft, gedimmt = gestoppt, blinkt = gesperrt) |
+  | CPU | `C35` | Text · Ring (Anteil am Rand) · Verlauf (letzte Minuten als Balken) |
+  | RAM | `R62` | Text · Ring · Verlauf |
+  | Load | `L0.5` (1 min) | – |
+  | Disk | `D47` = alle Storages mit VM-Disks/Containern zusammen | Text · Ring |
+  | Netz | `N12` = in + out in Mbit/s | – |
+  | Backup | `B✓` / `B✗` = letzter beendeter vzdump-Job | – |
+  | Updates | `U12` / `U✓` | – |
+  | Disk-Health | `HD✓` / `HD✗` = SMART-Status aller Platten + ZFS-Pools; nur alle 30 min abgefragt | – |
+  | Quorum | `Q✓` / `Q✗`, nur bei Clustern | – |
+  | Uhr | `12` / `34` | – |
 
-  Die Wechselzeit (3–60 s) stellst du ebenfalls in der App ein. Änderungen gelten sofort, auch bei laufendem Toy.
-- **DOWN** (Timeout nach 5 s, HTTP-Fehler, Node nicht online, kein Netz): X, volle Helligkeit, blinkt im 500-ms-Takt und ersetzt alle Ansichten
+  Im Ring-Design zeigt das 13×13-Display nur die Zahl (der Buchstabe würde den Ring berühren).
+- **DOWN**: blinkendes X = Server antwortet nicht, meldet einen Fehler oder ein Node ist offline.
+  ⊘ = das Handy hat gar kein Netz. `VPN` = der Host ist eine Tailscale-Adresse (100.64.0.0/10 oder `*.ts.net`),
+  aber auf dem Handy ist kein VPN aktiv.
 
-![Vorschau: alle Ansichten und DOWN auf Phone (4a) Pro und Phone (3)](docs/preview.gif)
+Weitere Einstellungen in der App:
+
+- **Helligkeit nach Auslastung**: CPU/RAM/Disk unter 50 % gedimmt, ab 80 % volle Helligkeit.
+- **Warnungen**: Schwellen für CPU, RAM und Disk; außerdem fehlgeschlagenes Backup, Disk-Fehler, verlorenes Quorum.
+  Modus *nur Warnungen zeigen* (Rotation nur noch über die kritischen Werte) oder
+  *Warnungen dazwischenschieben* (nach jeder normalen Ansicht eine Warnung).
+- **Nachtruhe**: Matrix im gewählten Zeitraum aus, außer der Server ist down oder eine Disk meldet einen Fehler.
+
+![Vorschau: Ansichten und Designs auf Phone (4a) Pro und Phone (3)](docs/preview.gif)
 
 Beim Aktivieren des Toys und bei jedem AOD-Event (ca. 1× pro Minute) wird `GET {host}/api2/json/nodes` abgefragt
-(Status, Uptime, CPU, RAM). Nur für aktivierte Ansichten kommen hinzu:
+(Status, Uptime, CPU, RAM). Nur wenn eine Ansicht, ein Design oder die Warnungen es brauchen, kommen hinzu:
 
-| Ansicht | Abfrage |
-|---|---|
-| VMs/LXC, Disk | `/cluster/resources` |
-| Load | `/nodes/{node}/status` |
-| Netz | `/nodes/{node}/rrddata?timeframe=hour&cf=AVERAGE` |
-| Backup | `/cluster/tasks` |
+| Daten | Abfrage | Recht |
+|---|---|---|
+| VMs/LXC, Disk | `/cluster/resources` | VM.Audit, Datastore.Audit |
+| Load | `/nodes/{node}/status` | Sys.Audit |
+| Netz, CPU-/RAM-Verlauf | `/nodes/{node}/rrddata?timeframe=hour&cf=AVERAGE` | Sys.Audit |
+| Backup | `/cluster/tasks` | Sys.Audit |
+| Disk-Health | `/nodes/{node}/disks/list`, `/nodes/{node}/disks/zfs` | Sys.Audit |
+| Quorum | `/cluster/status` | Sys.Audit |
+| Updates | `/nodes/{node}/apt/update` | **Sys.Modify** – nicht in PVEAuditor |
 
-Proxmox liefert diese Daten nur mit `Sys.Audit`, `VM.Audit` bzw. `Datastore.Audit`; die Rolle PVEAuditor enthält alle.
-Fehlen Daten, wird die jeweilige Ansicht übersprungen; der Status bleibt UP.
+Die Rolle PVEAuditor deckt alles außer den Updates ab. Proxmox verlangt für die Update-Liste `Sys.Modify`, ein
+Schreibrecht auf den Node; mit dem empfohlenen Read-only-Token wird die Ansicht deshalb übersprungen, und
+„Jetzt testen“ meldet das. Fehlen Daten, wird die jeweilige Ansicht übersprungen; der Status bleibt UP.
+
+Nicht möglich über die API: **Temperaturen** (Proxmox liefert keine Sensordaten) und **„Neustart nötig“**.
 
 ## 1. API-Token in Proxmox anlegen
 
@@ -88,7 +107,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - `app/libs/glyph-matrix-sdk-2.0.aar` – Glyph Matrix SDK aus dem
   [GlyphMatrix-Developer-Kit](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit)
 - `StatusToyService` – Glyph-Toy-Service (Bind/Unbind, AOD-Event, Rotation, Blinken)
-- `Screens` / `MatrixText` – Ansichten (Uptime, VMs/LXC, CPU, RAM, Disk, Uhr, DOWN) und Pixel-Schrift 3×5 bzw. 5×7
+- `Screens` – was wann angezeigt wird (Ansichten, Designs, Warnungen, Nachtruhe, DOWN-Gründe)
+- `MatrixText` / `MatrixGraphics` – Pixel-Schrift 3×5 bzw. 5×7, Ring, Verlauf, Punkte, ⊘
+- `Connectivity` – unterscheidet „kein Netz“ / „VPN aus“ von „Server down“
 - `ProxmoxClient` – HTTP-Abfrage (OkHttp, 5 s Timeout) und Zertifikat-Pinning
 - `MatrixIcons` – DOWN-Icon für 25×25 und 13×13 und die runde Sichtbarkeitsmaske
 - `SettingsActivity` / `Storage` – Einstellungen; Zugangsdaten in EncryptedSharedPreferences, Anzeige-Auswahl und Wechselzeit in normalen SharedPreferences

@@ -70,10 +70,10 @@ class StatusToyService : Service() {
 
     /** Picks up view/interval changes made in the app while the toy is running. */
     private val displayListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-        val before = display.views
+        val before = Screens.fetches(display)
         displayStore?.let { display = it.load() }
-        // A newly enabled view may need data the last check did not fetch.
-        if (!before.containsAll(display.views)) refreshStatus()
+        // A newly enabled view or design may need data the last check did not fetch.
+        if (!before.containsAll(Screens.fetches(display))) refreshStatus(force = true)
         render()
     }
 
@@ -82,7 +82,7 @@ class StatusToyService : Service() {
         override fun run() {
             tick++
             render()
-            mainHandler.postDelayed(this, TICK_MS)
+            mainHandler.postDelayed(this, Screens.TICK_MS)
         }
     }
 
@@ -100,7 +100,7 @@ class StatusToyService : Service() {
         glyphMatrixManager = GlyphMatrixManager.getInstance(applicationContext).also {
             it.init(gmmCallback)
         }
-        mainHandler.postDelayed(ticker, TICK_MS)
+        mainHandler.postDelayed(ticker, Screens.TICK_MS)
         refreshStatus()
         return serviceMessenger.binder
     }
@@ -119,20 +119,30 @@ class StatusToyService : Service() {
         return false
     }
 
-    private fun refreshStatus() {
+    /** [force] also re-fetches disk health, which is otherwise only refreshed every 30 min. */
+    private fun refreshStatus(force: Boolean = false) {
         val scope = scope ?: return
         if (checkJob?.isActive == true) return
-        val views = display.views
+        val previous = status
+        val now = System.currentTimeMillis()
+        val healthDue = force || previous?.healthOk == null ||
+            now - previous.healthCheckedAtMillis >= HEALTH_INTERVAL_MS
+        // SMART checks spin up and query every disk, so they are not repeated every minute.
+        val wanted = Screens.fetches(display)
+        val fetches = if (healthDue) wanted else wanted - Screens.Fetch.HEALTH
+        // Keep the last health result between the 30-min checks, but drop it once nobody needs it.
+        val keptHealth = if (Screens.Fetch.HEALTH in wanted) previous?.healthOk else null
         checkJob = scope.launch {
-            val result = withContext(Dispatchers.IO) {
+            val (result, host) = withContext(Dispatchers.IO) {
                 val config = runCatching { ConfigStore(applicationContext).load() }.getOrNull()
                 if (config == null) {
-                    CheckResult(false, "Einstellungen nicht lesbar")
+                    CheckResult(false, "Einstellungen nicht lesbar") to ""
                 } else {
-                    ProxmoxClient.check(config, views)
+                    ProxmoxClient.check(config, fetches) to config.host
                 }
             }
             Log.d(TAG, "Status: up=${result.up} (${result.message})")
+            val fetchedHealth = Screens.Fetch.HEALTH in fetches && result.up
             val newStatus = CachedStatus(
                 up = result.up,
                 uptimeSeconds = result.uptimeSeconds,
@@ -145,6 +155,15 @@ class StatusToyService : Service() {
                 netMbit = result.netMbit,
                 backupOk = result.backupOk,
                 checkedAtMillis = System.currentTimeMillis(),
+                guestStates = result.guestStates,
+                cpuHistory = result.cpuHistory,
+                memHistory = result.memHistory,
+                updates = result.updates,
+                healthOk = if (fetchedHealth) result.healthOk else keptHealth,
+                healthCheckedAtMillis = if (fetchedHealth) now else previous?.healthCheckedAtMillis ?: 0,
+                quorate = result.quorate,
+                downReason = if (result.connectionFailed) Connectivity.downReason(applicationContext, host)
+                else Screens.DownReason.SERVER,
             )
             StatusCache(applicationContext).store(newStatus)
             status = newStatus
@@ -155,24 +174,17 @@ class StatusToyService : Service() {
     private fun render() {
         val gmm = glyphMatrixManager ?: return
         if (!connected) return
-        val current = status
-        val frame = if (current?.up == false) {
-            Screens.down(matrixLength, blinkOn = tick % 2 == 0)
-        } else {
-            val views = Screens.views(current, display.views)
-            val ticksPerView = (display.intervalSeconds * 1000 / TICK_MS).toInt().coerceAtLeast(1)
-            val view = views[(tick / ticksPerView) % views.size]
-            val now = Calendar.getInstance()
-            Screens.view(
-                length = matrixLength,
-                view = view,
-                status = current,
-                nowMillis = now.timeInMillis,
-                hour = now.get(Calendar.HOUR_OF_DAY),
-                minute = now.get(Calendar.MINUTE),
-                is24Hour = DateFormat.is24HourFormat(this),
-            )
-        }
+        val now = Calendar.getInstance()
+        val frame = Screens.compose(
+            length = matrixLength,
+            status = status,
+            settings = display,
+            tick = tick,
+            nowMillis = now.timeInMillis,
+            hour = now.get(Calendar.HOUR_OF_DAY),
+            minute = now.get(Calendar.MINUTE),
+            is24Hour = DateFormat.is24HourFormat(this),
+        )
         // Only push to the matrix when the picture actually changes.
         if (lastFrame?.contentEquals(frame) == true) return
         try {
@@ -185,7 +197,6 @@ class StatusToyService : Service() {
 
     private companion object {
         const val TAG = "StatusToyService"
-        /** Blink half-period of the DOWN cross; also the resolution of the rotation timer. */
-        const val TICK_MS = 500L
+        const val HEALTH_INTERVAL_MS = 30 * 60 * 1000L
     }
 }

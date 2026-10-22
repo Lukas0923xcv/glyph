@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- To tell "no network / VPN off" apart from "server down" -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Required to access the Glyph Matrix -->
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
 

@@ -22,7 +22,7 @@
     <string name="result_up">UP – %1$s</string>
     <string name="result_down">DOWN – %1$s</string>
     <string name="section_display">Anzeige auf der Matrix</string>
-    <string name="display_hint">Wechselt der Reihe nach durch die gewählten Ansichten. Ist der Server down, blinkt stattdessen ein X. Änderungen gelten sofort.</string>
+    <string name="display_hint">Wechselt der Reihe nach durch die gewählten Ansichten. Ist der Server down, blinkt ein X; ⊘ = Handy ohne Netz, VPN = Tailscale aus. Änderungen gelten sofort.</string>
     <string name="view_uptime">Uptime (z. B. 42d)</string>
     <string name="view_guests">Laufende VMs/LXC (z. B. 7/9, ab 10 als Bruch)</string>
     <string name="view_cpu">CPU-Last (z. B. C35 = 35 %)</string>
@@ -31,7 +31,30 @@
     <string name="view_disk">VM/LXC-Storage belegt, zusammen (z. B. D93)</string>
     <string name="view_net">Netzwerk in + out in Mbit/s (z. B. N12)</string>
     <string name="view_backup">Letztes Backup (B✓ OK, B✗ fehlgeschlagen)</string>
+    <string name="view_updates">Ausstehende Updates (U12, U✓) – braucht mehr Rechte als PVEAuditor</string>
+    <string name="view_health">Disk-Health SMART/ZFS (HD✓, HD✗), alle 30 min</string>
+    <string name="view_quorum">Cluster-Quorum (Q✓, Q✗), nur bei Clustern</string>
     <string name="view_clock">Uhrzeit</string>
+    <string name="design_label">Design</string>
+    <string name="design_text">Text</string>
+    <string name="design_ring">Ring</string>
+    <string name="design_history">Verlauf</string>
+    <string name="design_dots">Punkte</string>
+    <string name="brightness_by_load">Helligkeit nach Auslastung (CPU/RAM/Disk: gedimmt unter 50 %, voll ab 80 %)</string>
+    <string name="section_alerts">Warnungen</string>
+    <string name="alerts_hint">Werte über der Schwelle, fehlgeschlagenes Backup, Disk-Fehler oder verlorenes Quorum.</string>
+    <string name="label_alert_mode">Bei Warnung</string>
+    <string name="alert_off">nichts ändern</string>
+    <string name="alert_only">nur Warnungen zeigen</string>
+    <string name="alert_priority">Warnungen dazwischenschieben</string>
+    <string name="label_cpu_alert">CPU ≥</string>
+    <string name="label_mem_alert">RAM ≥</string>
+    <string name="label_disk_alert">Disk ≥</string>
+    <string name="section_night">Nachtruhe</string>
+    <string name="night_enabled">Matrix nachts aus (außer Server down oder Disk-Fehler)</string>
+    <string name="label_night_from">von</string>
+    <string name="label_night_to">bis</string>
+    <string name="hour">%1$02d:00</string>
     <string name="label_interval">Wechsel alle</string>
     <string name="interval_seconds">%1$d s</string>
     <string name="need_one_view">Mindestens eine Ansicht muss aktiv sein.</string>

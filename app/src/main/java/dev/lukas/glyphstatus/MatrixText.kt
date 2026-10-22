@@ -2,7 +2,7 @@ package dev.lukas.glyphstatus
 
 /**
  * Renders short texts onto the round Glyph Matrix: digits, '/', ':', '.', the unit/label
- * letters d h C R D L N B and the icons ✓ ✗. 13x13 uses a 3x5 font, 25x25 a 5x7 font.
+ * letters d h B C D H L N P Q R U V and the icons ✓ ✗. 13x13 uses a 3x5 font, 25x25 a 5x7 font.
  * Digits and icons are drawn at [BRIGHTNESS_DIGIT], everything else at [BRIGHTNESS_SYMBOL].
  */
 object MatrixText {
@@ -35,6 +35,11 @@ object MatrixText {
         '.' to arrayOf(".", ".", ".", ".", "#"),
         '✓' to arrayOf("...", "..#", "..#", "#.#", ".#."),
         '✗' to arrayOf("...", "#.#", ".#.", "#.#", "..."),
+        'H' to arrayOf("#.#", "#.#", "###", "#.#", "#.#"),
+        'Q' to arrayOf(".#.", "#.#", "#.#", "##.", ".##"),
+        'U' to arrayOf("#.#", "#.#", "#.#", "#.#", "###"),
+        'V' to arrayOf("#.#", "#.#", "#.#", "#.#", ".#."),
+        'P' to arrayOf("##.", "#.#", "##.", "#..", "#.."),
     )
 
     private val FONT_5X7 = mapOf(
@@ -61,6 +66,11 @@ object MatrixText {
         '.' to arrayOf(".", ".", ".", ".", ".", ".", "#"),
         '✓' to arrayOf(".....", "....#", "....#", "...#.", "#.#..", ".#...", "....."),
         '✗' to arrayOf(".....", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "....."),
+        'H' to arrayOf("#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"),
+        'Q' to arrayOf(".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"),
+        'U' to arrayOf("#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."),
+        'V' to arrayOf("#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."),
+        'P' to arrayOf("####.", "#...#", "#...#", "####.", "#....", "#....", "#...."),
     )
 
     /**
@@ -85,6 +95,14 @@ object MatrixText {
         }
         return null
     }
+
+    /** One line of text, horizontally centered, starting at row [y0]. Null if it does not fit. */
+    fun renderLineAt(length: Int, line: String, y0: Int): IntArray? {
+        val frame = IntArray(length * length)
+        return if (drawLine(frame, length, line, y0)) frame else null
+    }
+
+    fun glyphHeight(length: Int) = if (length == 13) 5 else 7
 
     private fun layout(length: Int, lines: List<String>): IntArray? {
         val glyphHeight = glyphHeight(length)
@@ -115,8 +133,6 @@ object MatrixText {
         if (!drawLine(frame, length, bottom, barY + 1 + gap)) return null
         return frame
     }
-
-    private fun glyphHeight(length: Int) = if (length == 13) 5 else 7
 
     private fun font(length: Int) = if (length == 13) FONT_3X5 else FONT_5X7
 
