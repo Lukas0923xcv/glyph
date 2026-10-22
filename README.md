@@ -6,6 +6,8 @@ Der Toy zeigt, ob dein Proxmox-Server erreichbar ist:
 - **UP** (Anfrage erfolgreich und alle Nodes `online`): Häkchen, mittlere Helligkeit
 - **DOWN** (Timeout nach 5 s, HTTP-Fehler, Node nicht online, kein Netz): X, volle Helligkeit, blinkt im 500-ms-Takt
 
+![Vorschau: UP und DOWN auf Phone (3) und Phone (4a) Pro](docs/preview.gif)
+
 Abgefragt wird `GET {host}/api2/json/nodes` beim Aktivieren des Toys und bei jedem AOD-Event (ca. 1× pro Minute).
 
 ## 1. API-Token in Proxmox anlegen
