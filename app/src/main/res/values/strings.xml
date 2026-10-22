@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Server Status</string>
+    <string name="toy_name">Server Status</string>
+    <string name="toy_summary">Zeigt an, ob der Proxmox-Server erreichbar ist</string>
+
+    <string name="label_host">Host-URL</string>
+    <string name="hint_host">https://192.168.1.10:8006</string>
+    <string name="label_token_id">Token-ID</string>
+    <string name="hint_token_id">glyph@pve!status</string>
+    <string name="label_secret">Token-Secret</string>
+    <string name="hint_secret">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</string>
+    <string name="hint_secret_saved">Gespeichert – leer lassen, um es beizubehalten</string>
+    <string name="label_fingerprint">SHA-256-Zertifikat-Fingerprint (optional)</string>
+    <string name="hint_fingerprint">AB:CD:EF:…</string>
+    <string name="button_save">Speichern</string>
+    <string name="button_test">Jetzt testen</string>
+    <string name="button_toys">Glyph Toys verwalten</string>
+
+    <string name="saved">Gespeichert.</string>
+    <string name="testing">Teste …</string>
+    <string name="result_up">UP – %1$s</string>
+    <string name="result_down">DOWN – %1$s</string>
+    <string name="toys_manager_missing">Glyph-Toy-Verwaltung nicht gefunden. Öffne Einstellungen → Glyph Interface.</string>
+</resources>
