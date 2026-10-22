@@ -38,6 +38,13 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    testOptions {
+        unitTests.all {
+            // PluginTest validates every file in plugins/examples and the examples in docs/PLUGINS.md.
+            it.systemProperty("plugins.dir", rootProject.file("plugins/examples").absolutePath)
+            it.systemProperty("plugins.docs", rootProject.file("docs/PLUGINS.md").absolutePath)
+        }
+    }
 }
 
 dependencies {
@@ -46,4 +53,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     testImplementation("junit:junit:4.13.2")
+    // android.jar only has stubs for org.json; plugin tests need the real implementation.
+    testImplementation("org.json:json:20240303")
 }

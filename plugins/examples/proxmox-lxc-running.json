@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "id": "proxmox-lxc",
+  "name": "Laufende LXC-Container",
+  "source": {
+    "type": "proxmox",
+    "path": "cluster/resources",
+    "every_minutes": 1
+  },
+  "values": {
+    "running": { "count": "data", "where": { "type": "lxc", "status": "running" } },
+    "total": { "count": "data", "where": { "type": "lxc" } }
+  },
+  "variants": [
+    {
+      "if": { "error": true },
+      "design": "text",
+      "text": "LX?"
+    },
+    {
+      "design": "ring",
+      "value": "running",
+      "min": 0,
+      "max": 10,
+      "text": ["LX{running}", "{running}"]
+    }
+  ]
+}

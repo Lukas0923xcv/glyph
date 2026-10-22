@@ -35,6 +35,11 @@ Weitere Einstellungen in der App:
   *Warnungen dazwischenschieben* (nach jeder normalen Ansicht eine Warnung).
 - **Nachtruhe**: Matrix im gewählten Zeitraum aus, außer der Server ist down oder eine Disk meldet einen Fehler.
 
+- **Plugins**: eigene Datenquellen (beliebige HTTPS-API, Proxmox-Pfade) oder neue Designs für vorhandene Werte,
+  als JSON-Datei per *Datei importieren* oder *Aus Zwischenablage*. Plugins enthalten keinen Code; Tokens fragt die
+  App beim Import ab und speichert sie verschlüsselt. Anleitung für Menschen und KIs: **[docs/PLUGINS.md](docs/PLUGINS.md)**,
+  Beispiele in [plugins/examples/](plugins/examples).
+
 ![Vorschau: Ansichten und Designs auf Phone (4a) Pro und Phone (3)](docs/preview.gif)
 
 Beim Aktivieren des Toys und bei jedem AOD-Event (ca. 1× pro Minute) wird `GET {host}/api2/json/nodes` abgefragt
@@ -111,6 +116,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - `Screens` – was wann angezeigt wird (Ansichten, Designs, Warnungen, Nachtruhe, DOWN-Gründe)
 - `MatrixText` / `MatrixGraphics` – Pixel-Schrift 3×5 bzw. 5×7, Ring, Verlauf, Punkte, ⊘
 - `Connectivity` – unterscheidet „kein Netz“ / „VPN aus“ von „Server down“
+- `plugin/` – Plugin-Format, Validierung, Abruf, Darstellung und Speicherung (siehe docs/PLUGINS.md)
 - `ProxmoxClient` – HTTP-Abfrage (OkHttp, 5 s Timeout) und Zertifikat-Pinning
 - `MatrixIcons` – DOWN-Icon für 25×25 und 13×13 und die runde Sichtbarkeitsmaske
 - `SettingsActivity` / `Storage` – Einstellungen; Zugangsdaten in EncryptedSharedPreferences, Anzeige-Auswahl und Wechselzeit in normalen SharedPreferences

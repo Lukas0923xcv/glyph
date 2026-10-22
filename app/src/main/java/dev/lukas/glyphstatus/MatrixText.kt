@@ -1,8 +1,9 @@
 package dev.lukas.glyphstatus
 
 /**
- * Renders short texts onto the round Glyph Matrix: digits, '/', ':', '.', the unit/label
- * letters d h B C D H L N P Q R U V and the icons ✓ ✗. 13x13 uses a 3x5 font, 25x25 a 5x7 font.
+ * Renders short texts onto the round Glyph Matrix: digits, A–Z (lowercase falls back to
+ * uppercase; 'd' and 'h' have their own glyphs), the symbols / : . - + % ° ! ? and space,
+ * and the icons ✓ ✗. 13x13 uses a 3x5 font, 25x25 a 5x7 font.
  * Digits and icons are drawn at [BRIGHTNESS_DIGIT], everything else at [BRIGHTNESS_SYMBOL].
  */
 object MatrixText {
@@ -40,6 +41,28 @@ object MatrixText {
         'U' to arrayOf("#.#", "#.#", "#.#", "#.#", "###"),
         'V' to arrayOf("#.#", "#.#", "#.#", "#.#", ".#."),
         'P' to arrayOf("##.", "#.#", "##.", "#..", "#.."),
+        'A' to arrayOf(".#.", "#.#", "###", "#.#", "#.#"),
+        'E' to arrayOf("###", "#..", "##.", "#..", "###"),
+        'F' to arrayOf("###", "#..", "##.", "#..", "#.."),
+        'G' to arrayOf(".##", "#..", "#.#", "#.#", ".##"),
+        'I' to arrayOf("###", ".#.", ".#.", ".#.", "###"),
+        'J' to arrayOf("..#", "..#", "..#", "#.#", ".#."),
+        'K' to arrayOf("#.#", "#.#", "##.", "#.#", "#.#"),
+        'M' to arrayOf("#.#", "###", "###", "#.#", "#.#"),
+        'O' to arrayOf(".#.", "#.#", "#.#", "#.#", ".#."),
+        'S' to arrayOf(".##", "#..", ".#.", "..#", "##."),
+        'T' to arrayOf("###", ".#.", ".#.", ".#.", ".#."),
+        'W' to arrayOf("#.#", "#.#", "###", "###", "#.#"),
+        'X' to arrayOf("#.#", "#.#", ".#.", "#.#", "#.#"),
+        'Y' to arrayOf("#.#", "#.#", ".#.", ".#.", ".#."),
+        'Z' to arrayOf("###", "..#", ".#.", "#..", "###"),
+        '-' to arrayOf("...", "...", "###", "...", "..."),
+        '+' to arrayOf("...", ".#.", "###", ".#.", "..."),
+        '%' to arrayOf("#.#", "..#", ".#.", "#..", "#.#"),
+        '°' to arrayOf(".#.", "#.#", ".#.", "...", "..."),
+        '!' to arrayOf("#", "#", "#", ".", "#"),
+        '?' to arrayOf("##.", "..#", ".#.", "...", ".#."),
+        ' ' to arrayOf(".", ".", ".", ".", "."),
     )
 
     private val FONT_5X7 = mapOf(
@@ -71,6 +94,28 @@ object MatrixText {
         'U' to arrayOf("#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."),
         'V' to arrayOf("#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."),
         'P' to arrayOf("####.", "#...#", "#...#", "####.", "#....", "#....", "#...."),
+        'A' to arrayOf(".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"),
+        'E' to arrayOf("#####", "#....", "#....", "####.", "#....", "#....", "#####"),
+        'F' to arrayOf("#####", "#....", "#....", "####.", "#....", "#....", "#...."),
+        'G' to arrayOf(".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."),
+        'I' to arrayOf(".###.", "..#..", "..#..", "..#..", "..#..", "..#..", ".###."),
+        'J' to arrayOf("..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."),
+        'K' to arrayOf("#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"),
+        'M' to arrayOf("#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"),
+        'O' to arrayOf(".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."),
+        'S' to arrayOf(".####", "#....", "#....", ".###.", "....#", "....#", "####."),
+        'T' to arrayOf("#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."),
+        'W' to arrayOf("#...#", "#...#", "#...#", "#.#.#", "#.#.#", "#.#.#", ".#.#."),
+        'X' to arrayOf("#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"),
+        'Y' to arrayOf("#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."),
+        'Z' to arrayOf("#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"),
+        '-' to arrayOf("...", "...", "...", "###", "...", "...", "..."),
+        '+' to arrayOf(".....", "..#..", "..#..", "#####", "..#..", "..#..", "....."),
+        '%' to arrayOf("##...", "##..#", "...#.", "..#..", ".#...", "#..##", "...##"),
+        '°' to arrayOf(".#.", "#.#", ".#.", "...", "...", "...", "..."),
+        '!' to arrayOf("#", "#", "#", "#", "#", ".", "#"),
+        '?' to arrayOf(".###.", "#...#", "....#", "...#.", "..#..", ".....", "..#.."),
+        ' ' to arrayOf("..", "..", "..", "..", "..", "..", ".."),
     )
 
     /**
@@ -136,18 +181,19 @@ object MatrixText {
 
     private fun font(length: Int) = if (length == 13) FONT_3X5 else FONT_5X7
 
+    /** The glyph for [char], falling back to its uppercase form; null if the font has neither. */
+    fun glyph(length: Int, char: Char): Array<String>? = font(length).let { it[char] ?: it[char.uppercaseChar()] }
+
     private fun width(length: Int, line: String): Int? {
-        val font = font(length)
-        val glyphs = line.map { font[it] ?: return null }
+        val glyphs = line.map { glyph(length, it) ?: return null }
         return glyphs.sumOf { it[0].length } + glyphs.size - 1
     }
 
     /** Draws [line] horizontally centered at row [y0]; false if a glyph is unknown or leaves the circle. */
     private fun drawLine(frame: IntArray, length: Int, line: String, y0: Int): Boolean {
-        val font = font(length)
         var x0 = (length - (width(length, line) ?: return false) + 1) / 2
         for (char in line) {
-            val glyph = font.getValue(char)
+            val glyph = glyph(length, char) ?: return false
             val brightness = if (char.isDigit() || char == '✓' || char == '✗') BRIGHTNESS_DIGIT else BRIGHTNESS_SYMBOL
             for ((dy, row) in glyph.withIndex()) {
                 for ((dx, c) in row.withIndex()) {

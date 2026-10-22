@@ -33,6 +33,19 @@ object Screens {
         VPN_DOWN,
     }
 
+    /** A plugin as the rotation sees it; [render] returns null while it has nothing to show. */
+    class PluginDisplay(
+        val id: String,
+        val alert: Boolean,
+        val render: (length: Int, blinkOn: Boolean) -> IntArray?,
+    )
+
+    /** One entry of the rotation: a built-in view or a plugin. */
+    sealed interface Slot {
+        data class Builtin(val view: View) : Slot
+        data class Extra(val plugin: PluginDisplay) : Slot
+    }
+
     /** Data that needs requests beyond /nodes. */
     enum class Fetch { RESOURCES, LOAD, RRD, TASKS, UPDATES, HEALTH, QUORUM }
 
@@ -95,17 +108,31 @@ object Screens {
         }
     }
 
-    /** The rotation, taking the alert mode into account. */
-    fun playlist(status: CachedStatus?, settings: DisplaySettings): List<View> {
-        val regular = views(status, settings.views)
-        val alerts = alerts(status, settings)
-        if (alerts.isEmpty()) return regular
+    /** The rotation of built-in views only, taking the alert mode into account. */
+    fun playlist(status: CachedStatus?, settings: DisplaySettings): List<View> =
+        slots(status, settings, emptyList(), 13).map { (it as Slot.Builtin).view }
+
+    /**
+     * The rotation including plugins: built-in views, then plugins that have something to show,
+     * then the clock. Alerts (built-in and from plugins) are handled like in [playlist].
+     */
+    fun slots(status: CachedStatus?, settings: DisplaySettings, plugins: List<PluginDisplay>, length: Int): List<Slot> {
+        val available = plugins.filter { it.render(length, true) != null }
+        val builtin = View.entries.filter { it != View.CLOCK && it in settings.views && hasData(it, status) }
+        val regular = builtin.map { Slot.Builtin(it) } +
+            available.map { Slot.Extra(it) } +
+            listOfNotNull(Slot.Builtin(View.CLOCK).takeIf { View.CLOCK in settings.views })
+        val rotation = regular.ifEmpty { listOf(Slot.Builtin(View.CLOCK)) }
+        if (settings.alertMode == AlertMode.OFF) return rotation
+        val alerts = alerts(status, settings).map { Slot.Builtin(it) } +
+            available.filter { it.alert }.map { Slot.Extra(it) }
+        if (alerts.isEmpty()) return rotation
         return when (settings.alertMode) {
-            AlertMode.OFF -> regular
+            AlertMode.OFF -> rotation
             AlertMode.ONLY -> alerts
             AlertMode.PRIORITY -> buildList {
-                for (i in 0 until maxOf(regular.size, alerts.size)) {
-                    add(regular[i % regular.size])
+                for (i in 0 until maxOf(rotation.size, alerts.size)) {
+                    add(rotation[i % rotation.size])
                     add(alerts[i % alerts.size])
                 }
             }
@@ -131,8 +158,9 @@ object Screens {
         hour: Int,
         minute: Int,
         is24Hour: Boolean,
+        plugins: List<PluginDisplay> = emptyList(),
     ): IntArray {
-        val frame = picture(length, status, settings, tick, nowMillis, hour, minute, is24Hour)
+        val frame = picture(length, status, settings, tick, nowMillis, hour, minute, is24Hour, plugins)
         val brightness = settings.brightness.coerceIn(MIN_BRIGHTNESS, 100)
         return if (brightness == 100) frame else MatrixGraphics.scale(frame, brightness / 100.0)
     }
@@ -148,6 +176,7 @@ object Screens {
         hour: Int,
         minute: Int,
         is24Hour: Boolean,
+        plugins: List<PluginDisplay>,
     ): IntArray {
         val blinkOn = tick % 2 == 0
         if (status?.up == false) return down(length, blinkOn, status.downReason)
@@ -159,10 +188,12 @@ object Screens {
                 IntArray(length * length)
             }
         }
-        val playlist = playlist(status, settings)
+        val slots = slots(status, settings, plugins, length)
         val ticksPerView = (settings.intervalSeconds * 1000 / TICK_MS).toInt().coerceAtLeast(1)
-        val view = playlist[(tick / ticksPerView) % playlist.size]
-        return view(length, view, status, settings, nowMillis, hour, minute, is24Hour, blinkOn)
+        return when (val slot = slots[(tick / ticksPerView) % slots.size]) {
+            is Slot.Builtin -> view(length, slot.view, status, settings, nowMillis, hour, minute, is24Hour, blinkOn)
+            is Slot.Extra -> slot.plugin.render(length, blinkOn) ?: IntArray(length * length)
+        }
     }
 
     fun down(length: Int, blinkOn: Boolean, reason: DownReason = DownReason.SERVER): IntArray = when (reason) {

@@ -420,6 +420,45 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
+        <TextView
+            style="@android:style/TextAppearance.DeviceDefault.Medium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/section_plugins" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/plugins_hint" />
+
+        <LinearLayout
+            android:id="@+id/plugin_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/plugin_import_file"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/plugin_import_file" />
+
+            <Button
+                android:id="@+id/plugin_import_clipboard"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/plugin_import_clipboard" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/open_toys"
             android:layout_width="match_parent"

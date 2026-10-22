@@ -5,6 +5,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.security.MessageDigest
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -45,6 +46,8 @@ data class CheckResult(
     val quorate: Boolean? = null,
     /** The server could not be reached at all (no HTTP answer), as opposed to answering with an error. */
     val connectionFailed: Boolean = false,
+    /** Names of the online nodes (for plugin paths containing {node}). */
+    val nodes: List<String> = emptyList(),
 )
 
 object ProxmoxClient {
@@ -115,7 +118,7 @@ object ProxmoxClient {
                     connectionFailed = true,
                 )
             }
-            var result = nodes.result
+            var result = nodes.result.copy(nodes = nodes.online)
             if (!result.up) return result
             val details = StringBuilder(result.message)
 
@@ -384,7 +387,31 @@ object ProxmoxClient {
         return Nodes(result, online)
     }
 
-    private fun buildClient(fingerprint: String): OkHttpClient {
+    /**
+     * Authenticated GET on a Proxmox API path relative to /api2/json (for plugins). Blocking.
+     * Returns the response body; throws IOException with a readable message on any failure.
+     */
+    fun get(config: ServerConfig, path: String): String {
+        val base = config.host.trim().trimEnd('/').toHttpUrlOrNull() ?: throw IOException("Ungültige Host-URL")
+        val url = base.newBuilder().addPathSegments("api2/json").build().toString().trimEnd('/') + "/" + path.trimStart('/')
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "PVEAPIToken=${config.tokenId.trim()}=${config.secret.trim()}")
+            .get()
+            .build()
+        val client = buildClient(config.fingerprint)
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+                return response.body?.string().orEmpty()
+            }
+        } finally {
+            client.connectionPool.evictAll()
+        }
+    }
+
+    /** OkHttp client with the 5 s timeouts; pins the certificate when [fingerprint] is set. */
+    fun buildClient(fingerprint: String): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)

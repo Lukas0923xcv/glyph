@@ -15,6 +15,14 @@ import com.nothing.ketchum.Common
 import com.nothing.ketchum.Glyph
 import com.nothing.ketchum.GlyphMatrixManager
 import com.nothing.ketchum.GlyphToy
+import dev.lukas.glyphstatus.plugin.BuiltinValues
+import dev.lukas.glyphstatus.plugin.Plugin
+import dev.lukas.glyphstatus.plugin.PluginData
+import dev.lukas.glyphstatus.plugin.PluginEngine
+import dev.lukas.glyphstatus.plugin.PluginRunner
+import dev.lukas.glyphstatus.plugin.PluginState
+import dev.lukas.glyphstatus.plugin.PluginStore
+import dev.lukas.glyphstatus.plugin.Source
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,6 +48,11 @@ class StatusToyService : Service() {
     private var display = DisplaySettings.DEFAULT
     private var tick = 0
     private var lastFrame: IntArray? = null
+
+    private var pluginStore: PluginStore? = null
+    /** Enabled plugins and their last fetched state (main thread only). */
+    private var plugins: List<Plugin> = emptyList()
+    private val pluginStates = mutableMapOf<String, PluginState>()
 
     private val toyHandler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
@@ -77,6 +90,13 @@ class StatusToyService : Service() {
         render()
     }
 
+    /** Picks up plugins added, removed, switched on/off or given new secrets in the app. */
+    private val pluginListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        loadPlugins()
+        refreshStatus(forcePlugins = true)
+        render()
+    }
+
     /** Drives blinking (every tick) and the view rotation (every [DisplaySettings.intervalSeconds]). */
     private val ticker = object : Runnable {
         override fun run() {
@@ -94,6 +114,8 @@ class StatusToyService : Service() {
             display = it.load()
             it.prefs.registerOnSharedPreferenceChangeListener(displayListener)
         }
+        pluginStore = PluginStore(this).also { it.prefs.registerOnSharedPreferenceChangeListener(pluginListener) }
+        loadPlugins()
         tick = 0
         lastFrame = null
 
@@ -109,6 +131,8 @@ class StatusToyService : Service() {
         mainHandler.removeCallbacks(ticker)
         displayStore?.prefs?.unregisterOnSharedPreferenceChangeListener(displayListener)
         displayStore = null
+        pluginStore?.prefs?.unregisterOnSharedPreferenceChangeListener(pluginListener)
+        pluginStore = null
         scope?.cancel()
         scope = null
         checkJob = null
@@ -119,8 +143,18 @@ class StatusToyService : Service() {
         return false
     }
 
-    /** [force] also re-fetches disk health, which is otherwise only refreshed every 30 min. */
-    private fun refreshStatus(force: Boolean = false) {
+    private fun loadPlugins() {
+        val store = pluginStore ?: return
+        plugins = runCatching { store.enabled() }.getOrDefault(emptyList())
+        pluginStates.clear()
+        plugins.forEach { plugin -> store.state(plugin.id)?.let { pluginStates[plugin.id] = it } }
+    }
+
+    /**
+     * [force] also re-fetches disk health, which is otherwise only refreshed every 30 min;
+     * [forcePlugins] fetches all plugins regardless of their every_minutes.
+     */
+    private fun refreshStatus(force: Boolean = false, forcePlugins: Boolean = false) {
         val scope = scope ?: return
         if (checkJob?.isActive == true) return
         val previous = status
@@ -128,10 +162,17 @@ class StatusToyService : Service() {
         val healthDue = force || previous?.healthOk == null ||
             now - previous.healthCheckedAtMillis >= HEALTH_INTERVAL_MS
         // SMART checks spin up and query every disk, so they are not repeated every minute.
-        val wanted = Screens.fetches(display)
+        val wanted = Screens.fetches(display) + plugins.flatMap { BuiltinValues.fetchesFor(it) }
         val fetches = if (healthDue) wanted else wanted - Screens.Fetch.HEALTH
         // Keep the last health result between the 30-min checks, but drop it once nobody needs it.
         val keptHealth = if (Screens.Fetch.HEALTH in wanted) previous?.healthOk else null
+        val store = pluginStore
+        val duePlugins = plugins.filter { plugin ->
+            val last = pluginStates[plugin.id]?.fetchedAtMillis ?: 0
+            plugin.source != Source.Builtin &&
+                (forcePlugins || now - last >= plugin.source.everyMinutes * 60_000L - PLUGIN_SLACK_MS)
+        }
+        val previousStates = pluginStates.toMap()
         checkJob = scope.launch {
             val (result, host) = withContext(Dispatchers.IO) {
                 val config = runCatching { ConfigStore(applicationContext).load() }.getOrNull()
@@ -141,6 +182,23 @@ class StatusToyService : Service() {
                     ProxmoxClient.check(config, fetches) to config.host
                 }
             }
+            val newPluginStates = withContext(Dispatchers.IO) {
+                val config = runCatching { ConfigStore(applicationContext).load() }.getOrNull()
+                duePlugins.associate { plugin ->
+                    val secrets = runCatching { store?.secrets(plugin) }.getOrNull().orEmpty()
+                    val fetched = PluginRunner.fetch(plugin, secrets, config, result.nodes.firstOrNull())
+                    val history = previousStates[plugin.id]?.history.orEmpty()
+                    val state = PluginState(
+                        values = fetched.values,
+                        error = fetched.error,
+                        history = if (fetched.error == null) PluginEngine.record(history, fetched.values) else history,
+                        fetchedAtMillis = System.currentTimeMillis(),
+                    )
+                    store?.saveState(plugin.id, state)
+                    plugin.id to state
+                }
+            }
+            pluginStates.putAll(newPluginStates)
             Log.d(TAG, "Status: up=${result.up} (${result.message})")
             val fetchedHealth = Screens.Fetch.HEALTH in fetches && result.up
             val newStatus = CachedStatus(
@@ -184,6 +242,7 @@ class StatusToyService : Service() {
             hour = now.get(Calendar.HOUR_OF_DAY),
             minute = now.get(Calendar.MINUTE),
             is24Hour = DateFormat.is24HourFormat(this),
+            plugins = pluginDisplays(now.timeInMillis),
         )
         // Only push to the matrix when the picture actually changes.
         if (lastFrame?.contentEquals(frame) == true) return
@@ -195,8 +254,21 @@ class StatusToyService : Service() {
         }
     }
 
+    private fun pluginDisplays(nowMillis: Long): List<Screens.PluginDisplay> = plugins.mapNotNull { plugin ->
+        val data = if (plugin.source == Source.Builtin) {
+            PluginData(BuiltinValues.of(status, nowMillis), error = false)
+        } else {
+            pluginStates[plugin.id]?.toData() ?: return@mapNotNull null
+        }
+        Screens.PluginDisplay(plugin.id, PluginEngine.isAlert(plugin, data)) { length, blinkOn ->
+            PluginEngine.render(length, plugin, data, blinkOn)
+        }
+    }
+
     private companion object {
         const val TAG = "StatusToyService"
         const val HEALTH_INTERVAL_MS = 30 * 60 * 1000L
+        /** AOD events come roughly once a minute; don't skip a plugin for arriving a few seconds early. */
+        const val PLUGIN_SLACK_MS = 10_000L
     }
 }

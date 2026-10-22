@@ -1,22 +1,34 @@
 package dev.lukas.glyphstatus
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.ClipboardManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.text.InputType
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import dev.lukas.glyphstatus.plugin.Plugin
+import dev.lukas.glyphstatus.plugin.PluginData
+import dev.lukas.glyphstatus.plugin.PluginEngine
+import dev.lukas.glyphstatus.plugin.PluginException
+import dev.lukas.glyphstatus.plugin.PluginParser
+import dev.lukas.glyphstatus.plugin.PluginRunner
+import dev.lukas.glyphstatus.plugin.PluginStore
+import dev.lukas.glyphstatus.plugin.Source
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -27,6 +39,7 @@ class SettingsActivity : Activity() {
 
     private val scope = MainScope()
     private lateinit var store: ConfigStore
+    private lateinit var pluginStore: PluginStore
 
     private lateinit var host: EditText
     private lateinit var tokenId: EditText
@@ -62,6 +75,138 @@ class SettingsActivity : Activity() {
         requireViewById<Button>(R.id.open_toys).setOnClickListener { openToysManager() }
 
         setUpDisplaySettings()
+
+        pluginStore = PluginStore(applicationContext)
+        requireViewById<Button>(R.id.plugin_import_file).setOnClickListener {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+            startActivityForResult(intent, REQUEST_PLUGIN_FILE)
+        }
+        requireViewById<Button>(R.id.plugin_import_clipboard).setOnClickListener {
+            val text = getSystemService(ClipboardManager::class.java)?.primaryClip
+                ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+            if (text.isNullOrBlank()) {
+                Toast.makeText(this, R.string.plugin_clipboard_empty, Toast.LENGTH_SHORT).show()
+            } else {
+                installPlugin(text)
+            }
+        }
+        showPlugins()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_PLUGIN_FILE || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        val text = runCatching {
+            contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull()
+        if (text == null) {
+            Toast.makeText(this, R.string.plugin_read_failed, Toast.LENGTH_SHORT).show()
+        } else {
+            installPlugin(text)
+        }
+    }
+
+    /** Validates and installs; shows every problem if the plugin is invalid. */
+    private fun installPlugin(json: String) {
+        val plugin = try {
+            PluginParser.parse(json)
+        } catch (e: PluginException) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.plugin_invalid)
+                .setMessage(e.errors.joinToString("\n") { "• $it" })
+                .setPositiveButton(R.string.ok, null)
+                .show()
+            return
+        }
+        pluginStore.add(plugin)
+        Toast.makeText(this, getString(R.string.plugin_installed, plugin.name), Toast.LENGTH_SHORT).show()
+        showPlugins()
+        if (plugin.secrets.isNotEmpty()) askSecrets(plugin)
+    }
+
+    private fun askSecrets(plugin: Plugin) {
+        val saved = pluginStore.secrets(plugin)
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 16, 48, 0)
+        }
+        val fields = plugin.secrets.associate { secret ->
+            form.addView(TextView(this).apply { text = secret.label })
+            val field = EditText(this).apply {
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                if (!saved[secret.key].isNullOrEmpty()) setHint(R.string.plugin_secret_keep)
+            }
+            form.addView(field)
+            secret.key to field
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.plugin_secrets_title, plugin.name))
+            .setView(form)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                fields.forEach { (key, field) ->
+                    val value = field.text.toString().trim()
+                    if (value.isNotEmpty()) pluginStore.setSecret(plugin, key, value)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** One row per installed plugin: on/off, secrets, remove. */
+    private fun showPlugins() {
+        val list = requireViewById<LinearLayout>(R.id.plugin_list)
+        list.removeAllViews()
+        for (plugin in pluginStore.plugins()) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            row.addView(
+                CheckBox(this).apply {
+                    text = plugin.name
+                    isChecked = pluginStore.isEnabled(plugin.id)
+                    setOnCheckedChangeListener { _, checked -> pluginStore.setEnabled(plugin.id, checked) }
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            if (plugin.secrets.isNotEmpty()) {
+                row.addView(Button(this).apply {
+                    setText(R.string.plugin_secrets)
+                    setOnClickListener { askSecrets(plugin) }
+                })
+            }
+            row.addView(Button(this).apply {
+                setText(R.string.plugin_remove)
+                setOnClickListener {
+                    AlertDialog.Builder(this@SettingsActivity)
+                        .setMessage(getString(R.string.plugin_remove_confirm, plugin.name))
+                        .setPositiveButton(R.string.plugin_remove) { _, _ ->
+                            pluginStore.remove(plugin.id)
+                            showPlugins()
+                        }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                }
+            })
+            list.addView(row)
+        }
+    }
+
+    /** Fetches every enabled plugin once and describes what it got (for "Jetzt testen"). */
+    private fun testPlugins(config: ServerConfig, nodes: List<String>): String = buildString {
+        for (plugin in pluginStore.enabled()) {
+            append("\n\nPlugin „${plugin.name}“: ")
+            if (plugin.source == Source.Builtin) {
+                append("nutzt die eingebauten Werte")
+                continue
+            }
+            val fetched = PluginRunner.fetch(plugin, pluginStore.secrets(plugin), config, nodes.firstOrNull())
+            if (fetched.error != null) {
+                append("FEHLER – ${fetched.error}")
+                continue
+            }
+            append(fetched.values.entries.joinToString { (k, v) -> "$k = ${v ?: "–"}" })
+            val shown = PluginEngine.render(13, plugin, PluginData(fetched.values, false), true)
+            if (shown == null) append(" (zeigt so nichts an: keine Variante passt oder der Text ist zu breit)")
+        }
     }
 
     /** Everything under "Anzeige auf der Matrix"; saved immediately, the running toy picks it up live. */
@@ -245,7 +390,8 @@ class SettingsActivity : Activity() {
         testButton.isEnabled = false
         scope.launch {
             val check = withContext(Dispatchers.IO) { ProxmoxClient.check(config) }
-            result.text = getString(if (check.up) R.string.result_up else R.string.result_down, check.message)
+            val pluginReport = withContext(Dispatchers.IO) { testPlugins(config, check.nodes) }
+            result.text = getString(if (check.up) R.string.result_up else R.string.result_down, check.message) + pluginReport
             testButton.isEnabled = true
         }
     }
@@ -260,5 +406,9 @@ class SettingsActivity : Activity() {
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(this, R.string.toys_manager_missing, Toast.LENGTH_LONG).show()
         }
+    }
+
+    private companion object {
+        const val REQUEST_PLUGIN_FILE = 1
     }
 }

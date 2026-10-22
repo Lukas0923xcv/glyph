@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "id": "ha-temperature",
+  "name": "Wohnzimmer-Temperatur",
+  "secrets": [
+    { "key": "token", "label": "Home Assistant Long-Lived Access Token" }
+  ],
+  "source": {
+    "type": "http",
+    "url": "https://homeassistant.example.com:8123/api/states/sensor.wohnzimmer_temperatur",
+    "headers": { "Authorization": "Bearer {secret:token}" },
+    "every_minutes": 5
+  },
+  "values": {
+    "temp": { "path": "state" }
+  },
+  "variants": [
+    {
+      "if": { "error": true },
+      "design": "text",
+      "text": "T?"
+    },
+    {
+      "if": { "value": "temp", "op": ">=", "than": 28 },
+      "design": "text",
+      "text": ["T{temp:0}", "{temp:0}"],
+      "blink": true,
+      "alert": true
+    },
+    {
+      "design": "text",
+      "text": ["T{temp:0}", "{temp:0}"]
+    }
+  ]
+}

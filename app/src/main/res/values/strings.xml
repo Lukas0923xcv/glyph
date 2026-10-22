@@ -59,5 +59,20 @@
     <string name="label_interval">Wechsel alle</string>
     <string name="interval_seconds">%1$d s</string>
     <string name="need_one_view">Mindestens eine Ansicht muss aktiv sein.</string>
+    <string name="section_plugins">Plugins</string>
+    <string name="plugins_hint">Eigene Datenquellen und Designs als JSON-Datei (Anleitung: docs/PLUGINS.md im Repository). Aktive Plugins rotieren nach den eingebauten Ansichten.</string>
+    <string name="plugin_import_file">Datei importieren</string>
+    <string name="plugin_import_clipboard">Aus Zwischenablage</string>
+    <string name="plugin_secrets">Secrets</string>
+    <string name="plugin_remove">Entfernen</string>
+    <string name="plugin_remove_confirm">Plugin „%1$s“ entfernen?</string>
+    <string name="plugin_invalid">Plugin ungültig</string>
+    <string name="plugin_installed">Plugin „%1$s“ installiert.</string>
+    <string name="plugin_clipboard_empty">Die Zwischenablage enthält keinen Text.</string>
+    <string name="plugin_read_failed">Datei konnte nicht gelesen werden.</string>
+    <string name="plugin_secrets_title">Secrets für „%1$s“</string>
+    <string name="plugin_secret_keep">gespeichert – leer lassen, um es beizubehalten</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Abbrechen</string>
     <string name="toys_manager_missing">Glyph-Toy-Verwaltung nicht gefunden. Öffne Einstellungen → Glyph Interface.</string>
 </resources>
