@@ -30,7 +30,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class StatusToyService : Service() {
 
@@ -227,8 +230,10 @@ class StatusToyService : Service() {
                 downReason = if (result.connectionFailed) Connectivity.downReason(applicationContext, host)
                 else Screens.DownReason.SERVER,
             )
-            StatusCache(applicationContext).store(newStatus)
-            status = newStatus
+            val shown = Reliability.apply(previous, newStatus, result.connectionFailed, display.downAfterFailures)
+            StatusCache(applicationContext).store(shown)
+            status = shown
+            logCheck(result, newStatus, shown)
             render()
         }
     }
@@ -256,6 +261,19 @@ class StatusToyService : Service() {
         } catch (e: Exception) {
             Log.w(TAG, "setMatrixFrame failed", e)
         }
+    }
+
+    private fun logCheck(result: CheckResult, fresh: CachedStatus, shown: CachedStatus) {
+        val time = SimpleDateFormat("dd.MM. HH:mm:ss", Locale.ROOT).format(Date())
+        val outcome = when {
+            result.up -> "UP"
+            shown.up -> "Fehler ${shown.failures}/${display.downAfterFailures}, zeige weiter UP"
+            fresh.downReason == Screens.DownReason.NO_NETWORK -> "DOWN (kein Netz)"
+            fresh.downReason == Screens.DownReason.VPN_DOWN -> "DOWN (VPN aus)"
+            else -> "DOWN"
+        }
+        val line = "$time  $outcome – ${result.message.take(140)}  [${Connectivity.describe(applicationContext)}]"
+        runCatching { CheckLog(applicationContext).add(line) }
     }
 
     private fun pluginDisplays(nowMillis: Long): List<Screens.PluginDisplay> = plugins.mapNotNull { plugin ->

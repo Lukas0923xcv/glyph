@@ -293,6 +293,28 @@ class ScreensTest {
     }
 
     @Test
+    fun shortConnectionDropsKeepTheLastGoodStatus() {
+        val good = status(cpu = 30)
+        val lost = status(up = false, reason = DownReason.NO_NETWORK)
+        // 1st failure with threshold 2: keep showing UP (with the old values)
+        val first = Reliability.apply(good, lost, connectionFailed = true, threshold = 2)
+        assertTrue(first.up)
+        assertEquals(30, first.cpuPercent)
+        assertEquals(1, first.failures)
+        // 2nd failure in a row: DOWN
+        val second = Reliability.apply(first, lost, connectionFailed = true, threshold = 2)
+        assertFalse(second.up)
+        assertEquals(DownReason.NO_NETWORK, second.downReason)
+        // back up: counter reset
+        assertEquals(0, Reliability.apply(second, good, connectionFailed = false, threshold = 2).failures)
+        // threshold 1 = DOWN at once; a real answer (node offline) is DOWN at once too
+        assertFalse(Reliability.apply(good, lost, connectionFailed = true, threshold = 1).up)
+        assertFalse(Reliability.apply(good, status(up = false), connectionFailed = false, threshold = 5).up)
+        // never checked before: nothing to keep
+        assertFalse(Reliability.apply(null, lost, connectionFailed = true, threshold = 3).up)
+    }
+
+    @Test
     fun downReasonPicksTheSign() {
         fun compose(reason: DownReason, tick: Int) =
             Screens.compose(13, status(up = false, reason = reason), defaults, tick, now, 12, 0, true)

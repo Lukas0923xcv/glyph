@@ -6,7 +6,9 @@ import android.content.ClipboardManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.text.InputType
@@ -76,6 +78,7 @@ class SettingsActivity : Activity() {
         requireViewById<Button>(R.id.open_toys).setOnClickListener { openToysManager() }
 
         setUpDisplaySettings()
+        setUpReliability()
 
         pluginStore = PluginStore(applicationContext)
         requireViewById<Button>(R.id.plugin_import_file).setOnClickListener {
@@ -313,6 +316,38 @@ class SettingsActivity : Activity() {
         bindSpinner(R.id.night_to, hours, settings.nightTo) { i -> update { it.copy(nightTo = i) } }
     }
 
+    private fun setUpReliability() {
+        requireViewById<Button>(R.id.battery_exempt).setOnClickListener {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))
+            try {
+                startActivity(intent)
+            } catch (e: ActivityNotFoundException) {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
+        }
+        val displayStore = DisplaySettingsStore(applicationContext)
+        val choices = Reliability.THRESHOLD_CHOICES
+        bindSpinner(
+            R.id.down_after,
+            choices.map { getString(R.string.down_after_choice, it) },
+            choices.indexOf(displayStore.load().downAfterFailures),
+        ) { i -> displayStore.save(displayStore.load().copy(downAfterFailures = choices[i])) }
+        requireViewById<Button>(R.id.show_log).setOnClickListener {
+            val entries = CheckLog(applicationContext).entries()
+            AlertDialog.Builder(this)
+                .setTitle(R.string.log_title)
+                .setMessage(if (entries.isEmpty()) getString(R.string.log_empty) else entries.joinToString("\n\n"))
+                .setPositiveButton(R.string.ok, null)
+                .show()
+        }
+    }
+
+    private fun updateBatteryStatus() {
+        val exempt = Connectivity.ignoresBatteryOptimization(this)
+        requireViewById<TextView>(R.id.battery_status).setText(if (exempt) R.string.battery_ok else R.string.battery_on)
+        requireViewById<Button>(R.id.battery_exempt).visibility = if (exempt) View.GONE else View.VISIBLE
+    }
+
     private fun designLabel(design: Screens.Design) = when (design) {
         Screens.Design.TEXT -> R.string.design_text
         Screens.Design.RING -> R.string.design_ring
@@ -353,6 +388,7 @@ class SettingsActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        updateBatteryStatus()
         // Clock only may have been toggled from the launcher entry, the tile or the Glyph Button.
         if (::clockOnlyBox.isInitialized) clockOnlyBox.isChecked = DisplaySettingsStore(applicationContext).load().clockOnly
     }

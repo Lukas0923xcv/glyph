@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- To tell "no network / VPN off" apart from "server down" -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Lets the user exempt the app from battery optimization so Doze does not cut its network -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Required to access the Glyph Matrix -->
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
 

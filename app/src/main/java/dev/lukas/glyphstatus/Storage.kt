@@ -74,6 +74,8 @@ data class CachedStatus(
     val quorate: Boolean? = null,
     /** Why the server counts as down (only meaningful while [up] is false). */
     val downReason: Screens.DownReason = Screens.DownReason.SERVER,
+    /** Failed checks in a row (see [Reliability]). */
+    val failures: Int = 0,
 )
 
 class StatusCache(context: Context) {
@@ -103,6 +105,7 @@ class StatusCache(context: Context) {
             healthCheckedAtMillis = prefs.getLong(KEY_HEALTH_CHECKED_AT, 0),
             quorate = getTriState(KEY_QUORATE),
             downReason = Screens.DownReason.entries.getOrElse(prefs.getInt(KEY_DOWN_REASON, 0)) { Screens.DownReason.SERVER },
+            failures = prefs.getInt(KEY_FAILURES, 0),
         )
     }
 
@@ -127,6 +130,7 @@ class StatusCache(context: Context) {
             .putLong(KEY_HEALTH_CHECKED_AT, status.healthCheckedAtMillis)
             .putInt(KEY_QUORATE, triState(status.quorate))
             .putInt(KEY_DOWN_REASON, status.downReason.ordinal)
+            .putInt(KEY_FAILURES, status.failures)
             .apply()
     }
 
@@ -157,6 +161,7 @@ class StatusCache(context: Context) {
         const val KEY_HEALTH_CHECKED_AT = "health_checked_at"
         const val KEY_QUORATE = "quorate"
         const val KEY_DOWN_REASON = "down_reason"
+        const val KEY_FAILURES = "failures"
     }
 }
 
@@ -179,6 +184,8 @@ data class DisplaySettings(
     val brightness: Int = 100,
     /** Show only the clock instead of the rotation (DOWN still takes over). */
     val clockOnly: Boolean = false,
+    /** Connection failures in a row before an UP server is shown as DOWN. */
+    val downAfterFailures: Int = 2,
 ) {
     fun design(view: Screens.View): Screens.Design = designs[view] ?: Screens.Design.TEXT
 
@@ -231,6 +238,7 @@ class DisplaySettingsStore(context: Context) {
             nightTo = prefs.getInt(KEY_NIGHT_TO, default.nightTo),
             brightness = prefs.getInt(KEY_BRIGHTNESS, default.brightness),
             clockOnly = prefs.getBoolean(KEY_CLOCK_ONLY, default.clockOnly),
+            downAfterFailures = prefs.getInt(KEY_DOWN_AFTER, default.downAfterFailures),
         )
     }
 
@@ -252,6 +260,7 @@ class DisplaySettingsStore(context: Context) {
             .putInt(KEY_NIGHT_TO, settings.nightTo)
             .putInt(KEY_BRIGHTNESS, settings.brightness)
             .putBoolean(KEY_CLOCK_ONLY, settings.clockOnly)
+            .putInt(KEY_DOWN_AFTER, settings.downAfterFailures)
             .apply()
     }
 
@@ -269,5 +278,6 @@ class DisplaySettingsStore(context: Context) {
         const val KEY_NIGHT_TO = "night_to"
         const val KEY_BRIGHTNESS = "brightness"
         const val KEY_CLOCK_ONLY = "clock_only"
+        const val KEY_DOWN_AFTER = "down_after_failures"
     }
 }

@@ -59,6 +59,15 @@
     <string name="label_interval">Wechsel alle</string>
     <string name="interval_seconds">%1$d s</string>
     <string name="need_one_view">Mindestens eine Ansicht muss aktiv sein.</string>
+    <string name="section_reliability">Zuverlässigkeit</string>
+    <string name="battery_ok">Akku-Optimierung ist für die App aus – Android lässt sie auch im Ruhezustand ins Netz.</string>
+    <string name="battery_on">Akku-Optimierung ist AN: Liegt das Handy länger still (Doze), sperrt Android der App das Netz und die Matrix zeigt „kein Netz“. Bitte ausschalten – und für Tailscale ebenso.</string>
+    <string name="battery_exempt">Akku-Optimierung ausschalten</string>
+    <string name="label_down_after">DOWN erst nach</string>
+    <string name="down_after_choice">%1$d Fehlversuch(en) in Folge</string>
+    <string name="show_log">Abfrage-Protokoll anzeigen</string>
+    <string name="log_title">Letzte Abfragen (neueste oben)</string>
+    <string name="log_empty">Noch keine Abfragen – der Toy war seit der Installation nicht aktiv.</string>
     <string name="section_plugins">Plugins</string>
     <string name="plugins_hint">Eigene Datenquellen und Designs als JSON-Datei (Anleitung: docs/PLUGINS.md im Repository). Aktive Plugins rotieren nach den eingebauten Ansichten.</string>
     <string name="plugin_import_file">Datei importieren</string>

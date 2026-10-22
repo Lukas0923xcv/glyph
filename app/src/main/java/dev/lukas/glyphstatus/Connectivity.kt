@@ -3,6 +3,7 @@ package dev.lukas.glyphstatus
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.PowerManager
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /** Tells "the phone cannot reach anything" apart from "the server does not answer". */
@@ -15,6 +16,23 @@ object Connectivity {
         val octets = name.split('.').mapNotNull { it.toIntOrNull() }
         return octets.size == 4 && octets[0] == 100 && octets[1] in 64..127
     }
+
+    /** One line for the check log: network, VPN and battery optimization as Android reports them. */
+    fun describe(context: Context): String {
+        val manager = context.getSystemService(ConnectivityManager::class.java)
+        val capabilities = manager?.activeNetwork?.let { manager.getNetworkCapabilities(it) }
+        val network = when {
+            capabilities == null -> "kein Netz für die App"
+            !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) -> "Netz ohne Internet"
+            else -> "Netz ok"
+        }
+        val vpn = if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) "VPN an" else "VPN aus"
+        val battery = if (ignoresBatteryOptimization(context)) "Akku-Optimierung aus" else "Akku-Optimierung AN"
+        return "$network, $vpn, $battery"
+    }
+
+    fun ignoresBatteryOptimization(context: Context): Boolean =
+        context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName) == true
 
     /** Why a server that could not be reached counts as down. */
     fun downReason(context: Context, host: String): Screens.DownReason {

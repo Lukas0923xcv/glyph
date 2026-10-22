@@ -37,6 +37,11 @@ Weitere Einstellungen in der App:
   Modus *nur Warnungen zeigen* (Rotation nur noch über die kritischen Werte) oder
   *Warnungen dazwischenschieben* (nach jeder normalen Ansicht eine Warnung).
 - **Nachtruhe**: Matrix im gewählten Zeitraum aus, außer der Server ist down oder eine Disk meldet einen Fehler.
+- **Zuverlässigkeit**: Knopf zum Abschalten der Akku-Optimierung (sonst sperrt Android der App im Ruhezustand/Doze
+  nach ca. 30 min das Netz, und die Matrix zeigt „kein Netz“ – für Tailscale ebenfalls abschalten).
+  *DOWN erst nach N Fehlversuchen* (Standard 2): einzelne Verbindungsaussetzer lassen den letzten guten Stand stehen;
+  meldet der Server selbst ein Problem (Node offline, HTTP-Fehler), gilt das sofort.
+  *Abfrage-Protokoll*: die letzten 50 Abfragen mit Ergebnis, Netz-, VPN- und Akku-Status.
 
 - **Plugins**: eigene Datenquellen (beliebige HTTPS-API, Proxmox-Pfade) oder neue Designs für vorhandene Werte,
   als JSON-Datei per *Datei importieren* oder *Aus Zwischenablage*. Plugins enthalten keinen Code; Tokens fragt die
