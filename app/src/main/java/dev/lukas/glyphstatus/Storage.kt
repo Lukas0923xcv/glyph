@@ -57,6 +57,9 @@ data class CachedStatus(
     val cpuPercent: Int?,
     val memPercent: Int?,
     val diskPercent: Int?,
+    val loadAverage: Double?,
+    val netMbit: Int?,
+    val backupOk: Boolean?,
     /** Wall-clock time of the check, to let the uptime keep counting. */
     val checkedAtMillis: Long,
 )
@@ -76,6 +79,9 @@ class StatusCache(context: Context) {
             cpuPercent = prefs.getInt(KEY_CPU, -1).takeIf { it >= 0 },
             memPercent = prefs.getInt(KEY_MEM, -1).takeIf { it >= 0 },
             diskPercent = prefs.getInt(KEY_DISK, -1).takeIf { it >= 0 },
+            loadAverage = prefs.getFloat(KEY_LOAD, -1f).takeIf { it >= 0 }?.toDouble(),
+            netMbit = prefs.getInt(KEY_NET, -1).takeIf { it >= 0 },
+            backupOk = when (prefs.getInt(KEY_BACKUP, -1)) { 1 -> true; 0 -> false; else -> null },
             checkedAtMillis = prefs.getLong(KEY_CHECKED_AT, 0),
         )
     }
@@ -89,6 +95,9 @@ class StatusCache(context: Context) {
             .putInt(KEY_CPU, status.cpuPercent ?: -1)
             .putInt(KEY_MEM, status.memPercent ?: -1)
             .putInt(KEY_DISK, status.diskPercent ?: -1)
+            .putFloat(KEY_LOAD, status.loadAverage?.toFloat() ?: -1f)
+            .putInt(KEY_NET, status.netMbit ?: -1)
+            .putInt(KEY_BACKUP, when (status.backupOk) { true -> 1; false -> 0; null -> -1 })
             .putLong(KEY_CHECKED_AT, status.checkedAtMillis)
             .apply()
     }
@@ -101,6 +110,9 @@ class StatusCache(context: Context) {
         const val KEY_CPU = "cpu_percent"
         const val KEY_MEM = "mem_percent"
         const val KEY_DISK = "disk_percent"
+        const val KEY_LOAD = "load_average"
+        const val KEY_NET = "net_mbit"
+        const val KEY_BACKUP = "backup_ok"
         const val KEY_CHECKED_AT = "checked_at"
     }
 }

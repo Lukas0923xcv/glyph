@@ -71,7 +71,10 @@ class SettingsActivity : Activity() {
             Screens.View.GUESTS to R.id.view_guests,
             Screens.View.CPU to R.id.view_cpu,
             Screens.View.MEM to R.id.view_mem,
+            Screens.View.LOAD to R.id.view_load,
             Screens.View.DISK to R.id.view_disk,
+            Screens.View.NET to R.id.view_net,
+            Screens.View.BACKUP to R.id.view_backup,
             Screens.View.CLOCK to R.id.view_clock,
         ).mapValues { (_, id) -> requireViewById<CheckBox>(id) }
 

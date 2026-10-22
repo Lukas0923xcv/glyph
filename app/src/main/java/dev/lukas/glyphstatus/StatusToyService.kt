@@ -70,7 +70,10 @@ class StatusToyService : Service() {
 
     /** Picks up view/interval changes made in the app while the toy is running. */
     private val displayListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        val before = display.views
         displayStore?.let { display = it.load() }
+        // A newly enabled view may need data the last check did not fetch.
+        if (!before.containsAll(display.views)) refreshStatus()
         render()
     }
 
@@ -119,13 +122,14 @@ class StatusToyService : Service() {
     private fun refreshStatus() {
         val scope = scope ?: return
         if (checkJob?.isActive == true) return
+        val views = display.views
         checkJob = scope.launch {
             val result = withContext(Dispatchers.IO) {
                 val config = runCatching { ConfigStore(applicationContext).load() }.getOrNull()
                 if (config == null) {
                     CheckResult(false, "Einstellungen nicht lesbar")
                 } else {
-                    ProxmoxClient.check(config)
+                    ProxmoxClient.check(config, views)
                 }
             }
             Log.d(TAG, "Status: up=${result.up} (${result.message})")
@@ -137,6 +141,9 @@ class StatusToyService : Service() {
                 cpuPercent = result.cpuPercent,
                 memPercent = result.memPercent,
                 diskPercent = result.diskPercent,
+                loadAverage = result.loadAverage,
+                netMbit = result.netMbit,
+                backupOk = result.backupOk,
                 checkedAtMillis = System.currentTimeMillis(),
             )
             StatusCache(applicationContext).store(newStatus)

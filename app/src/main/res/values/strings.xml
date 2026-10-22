@@ -24,10 +24,13 @@
     <string name="section_display">Anzeige auf der Matrix</string>
     <string name="display_hint">Wechselt der Reihe nach durch die gewählten Ansichten. Ist der Server down, blinkt stattdessen ein X. Änderungen gelten sofort.</string>
     <string name="view_uptime">Uptime (z. B. 42d)</string>
-    <string name="view_guests">Laufende VMs/LXC (z. B. 7/9)</string>
+    <string name="view_guests">Laufende VMs/LXC (z. B. 7/9, ab 10 als Bruch)</string>
     <string name="view_cpu">CPU-Last (z. B. C35 = 35 %)</string>
     <string name="view_mem">RAM-Belegung (z. B. R62)</string>
-    <string name="view_disk">Vollster Storage (z. B. D93)</string>
+    <string name="view_load">Load Average, 1 min (z. B. L0.5)</string>
+    <string name="view_disk">VM/LXC-Storage belegt, zusammen (z. B. D93)</string>
+    <string name="view_net">Netzwerk in + out in Mbit/s (z. B. N12)</string>
+    <string name="view_backup">Letztes Backup (B✓ OK, B✗ fehlgeschlagen)</string>
     <string name="view_clock">Uhrzeit</string>
     <string name="label_interval">Wechsel alle</string>
     <string name="interval_seconds">%1$d s</string>

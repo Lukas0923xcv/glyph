@@ -9,10 +9,13 @@ Der Toy zeigt, ob dein Proxmox-Server erreichbar ist:
   | Ansicht | Beispiel | Bedeutung |
   |---|---|---|
   | Uptime | `42d` | Tage seit dem Boot (unter einem Tag in Stunden, z. B. `5h`) |
-  | VMs/LXC | `7/9` | laufend / gesamt, ohne Templates; passt es nicht, nur die laufenden |
+  | VMs/LXC | `7/9` | laufend / gesamt, ohne Templates; ab zweistelligen Zahlen als Bruch (`12` über `15`) |
   | CPU | `C35` | CPU-Last in % (bei mehreren Nodes die höchste) |
   | RAM | `R62` | RAM-Belegung in % (bei mehreren Nodes die höchste) |
-  | Disk | `D93` | Belegung des vollsten verfügbaren Storage in % |
+  | Load | `L0.5` | Load Average (1 min); ab 10 ohne Nachkommastelle (`L12`) |
+  | Disk | `D47` | Belegung aller Storages mit VM-Disks/Containern (Content `images`/`rootdir`) zusammen, in % |
+  | Netz | `N12` | Netzwerk-Durchsatz in + out in Mbit/s (Mittel der letzten Minute); auf 13×13 max. `N99` |
+  | Backup | `B✓` / `B✗` | Ergebnis des zuletzt beendeten Backup-Jobs (vzdump); Warnungen zählen als OK |
   | Uhr | `12` / `34` | Uhrzeit, 12/24 h wie in den Android-Einstellungen |
 
   Die Wechselzeit (3–60 s) stellst du ebenfalls in der App ein. Änderungen gelten sofort, auch bei laufendem Toy.
@@ -20,9 +23,17 @@ Der Toy zeigt, ob dein Proxmox-Server erreichbar ist:
 
 ![Vorschau: alle Ansichten und DOWN auf Phone (4a) Pro und Phone (3)](docs/preview.gif)
 
-Abgefragt werden `GET {host}/api2/json/nodes` und `GET {host}/api2/json/cluster/resources` beim Aktivieren
-des Toys und bei jedem AOD-Event (ca. 1× pro Minute). Uptime, CPU und RAM liefert Proxmox nur, wenn der Token
-`Sys.Audit` hat; VMs/LXC und Storage nur mit `VM.Audit` bzw. `Datastore.Audit`. Die Rolle PVEAuditor enthält alle drei.
+Beim Aktivieren des Toys und bei jedem AOD-Event (ca. 1× pro Minute) wird `GET {host}/api2/json/nodes` abgefragt
+(Status, Uptime, CPU, RAM). Nur für aktivierte Ansichten kommen hinzu:
+
+| Ansicht | Abfrage |
+|---|---|
+| VMs/LXC, Disk | `/cluster/resources` |
+| Load | `/nodes/{node}/status` |
+| Netz | `/nodes/{node}/rrddata?timeframe=hour&cf=AVERAGE` |
+| Backup | `/cluster/tasks` |
+
+Proxmox liefert diese Daten nur mit `Sys.Audit`, `VM.Audit` bzw. `Datastore.Audit`; die Rolle PVEAuditor enthält alle.
 Fehlen Daten, wird die jeweilige Ansicht übersprungen; der Status bleibt UP.
 
 ## 1. API-Token in Proxmox anlegen

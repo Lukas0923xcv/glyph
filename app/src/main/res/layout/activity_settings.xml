@@ -144,10 +144,28 @@
             android:text="@string/view_mem" />
 
         <CheckBox
+            android:id="@+id/view_load"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_load" />
+
+        <CheckBox
             android:id="@+id/view_disk"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/view_disk" />
+
+        <CheckBox
+            android:id="@+id/view_net"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_net" />
+
+        <CheckBox
+            android:id="@+id/view_backup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_backup" />
 
         <CheckBox
             android:id="@+id/view_clock"

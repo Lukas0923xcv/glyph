@@ -1,9 +1,9 @@
 package dev.lukas.glyphstatus
 
 /**
- * Renders short texts (digits, '/', ':', 'd', 'h', 'C', 'R', 'D') onto the round Glyph Matrix.
- * 13x13 uses a 3x5 font, 25x25 a 5x7 font. Digits are drawn at [BRIGHTNESS_DIGIT],
- * everything else at [BRIGHTNESS_SYMBOL].
+ * Renders short texts onto the round Glyph Matrix: digits, '/', ':', '.', the unit/label
+ * letters d h C R D L N B and the icons ✓ ✗. 13x13 uses a 3x5 font, 25x25 a 5x7 font.
+ * Digits and icons are drawn at [BRIGHTNESS_DIGIT], everything else at [BRIGHTNESS_SYMBOL].
  */
 object MatrixText {
 
@@ -28,6 +28,13 @@ object MatrixText {
         'C' to arrayOf("###", "#..", "#..", "#..", "###"),
         'R' to arrayOf("##.", "#.#", "##.", "#.#", "#.#"),
         'D' to arrayOf("##.", "#.#", "#.#", "#.#", "##."),
+        'L' to arrayOf("#..", "#..", "#..", "#..", "###"),
+        // 3 px wide is too narrow for a readable 'N'; a lowercase-style 'n' reads clearly.
+        'N' to arrayOf("##.", "#.#", "#.#", "#.#", "#.#"),
+        'B' to arrayOf("##.", "#.#", "##.", "#.#", "##."),
+        '.' to arrayOf(".", ".", ".", ".", "#"),
+        '✓' to arrayOf("...", "..#", "..#", "#.#", ".#."),
+        '✗' to arrayOf("...", "#.#", ".#.", "#.#", "..."),
     )
 
     private val FONT_5X7 = mapOf(
@@ -48,6 +55,12 @@ object MatrixText {
         'C' to arrayOf(".###.", "#...#", "#....", "#....", "#....", "#...#", ".###."),
         'R' to arrayOf("####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"),
         'D' to arrayOf("####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."),
+        'L' to arrayOf("#....", "#....", "#....", "#....", "#....", "#....", "#####"),
+        'N' to arrayOf("#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"),
+        'B' to arrayOf("####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."),
+        '.' to arrayOf(".", ".", ".", ".", ".", ".", "#"),
+        '✓' to arrayOf(".....", "....#", "....#", "...#.", "#.#..", ".#...", "....."),
+        '✗' to arrayOf(".....", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "....."),
     )
 
     /**
@@ -62,35 +75,77 @@ object MatrixText {
         return null
     }
 
+    /**
+     * [top] over [bottom], separated by a dimmed fraction bar ("12" over "15").
+     * Tries with a blank row around the bar first, then without. Returns null if it does not fit.
+     */
+    fun renderFraction(length: Int, top: String, bottom: String): IntArray? {
+        for (gap in listOf(1, 0)) {
+            layoutFraction(length, top, bottom, gap)?.let { return it }
+        }
+        return null
+    }
+
     private fun layout(length: Int, lines: List<String>): IntArray? {
-        val font = if (length == 13) FONT_3X5 else FONT_5X7
-        val glyphHeight = if (length == 13) 5 else 7
+        val glyphHeight = glyphHeight(length)
         val lineGap = if (length == 13) 1 else 2
         val frame = IntArray(length * length)
 
         val totalHeight = lines.size * glyphHeight + (lines.size - 1) * lineGap
         var y0 = (length - totalHeight) / 2
         for (line in lines) {
-            val glyphs = line.map { font[it] ?: return null }
-            val width = glyphs.sumOf { it[0].length } + glyphs.size - 1
-            var x0 = (length - width + 1) / 2
-            for ((glyph, char) in glyphs.zip(line.toList())) {
-                val brightness = if (char.isDigit()) BRIGHTNESS_DIGIT else BRIGHTNESS_SYMBOL
-                for ((dy, row) in glyph.withIndex()) {
-                    for ((dx, c) in row.withIndex()) {
-                        if (c != '#') continue
-                        val x = x0 + dx
-                        val y = y0 + dy
-                        if (x !in 0 until length || y !in 0 until length || !MatrixIcons.isVisible(length, x, y)) {
-                            return null
-                        }
-                        frame[y * length + x] = brightness
-                    }
-                }
-                x0 += glyph[0].length + 1
-            }
+            if (!drawLine(frame, length, line, y0)) return null
             y0 += glyphHeight + lineGap
         }
         return frame
+    }
+
+    private fun layoutFraction(length: Int, top: String, bottom: String, gap: Int): IntArray? {
+        val glyphHeight = glyphHeight(length)
+        val frame = IntArray(length * length)
+        val totalHeight = 2 * glyphHeight + 2 * gap + 1
+        val y0 = (length - totalHeight) / 2
+        if (!drawLine(frame, length, top, y0)) return null
+        val barY = y0 + glyphHeight + gap
+        val barWidth = maxOf(width(length, top) ?: return null, width(length, bottom) ?: return null) + 2
+        val barX = (length - barWidth + 1) / 2
+        for (x in barX until barX + barWidth) {
+            if (!set(frame, length, x, barY, BRIGHTNESS_SYMBOL)) return null
+        }
+        if (!drawLine(frame, length, bottom, barY + 1 + gap)) return null
+        return frame
+    }
+
+    private fun glyphHeight(length: Int) = if (length == 13) 5 else 7
+
+    private fun font(length: Int) = if (length == 13) FONT_3X5 else FONT_5X7
+
+    private fun width(length: Int, line: String): Int? {
+        val font = font(length)
+        val glyphs = line.map { font[it] ?: return null }
+        return glyphs.sumOf { it[0].length } + glyphs.size - 1
+    }
+
+    /** Draws [line] horizontally centered at row [y0]; false if a glyph is unknown or leaves the circle. */
+    private fun drawLine(frame: IntArray, length: Int, line: String, y0: Int): Boolean {
+        val font = font(length)
+        var x0 = (length - (width(length, line) ?: return false) + 1) / 2
+        for (char in line) {
+            val glyph = font.getValue(char)
+            val brightness = if (char.isDigit() || char == '✓' || char == '✗') BRIGHTNESS_DIGIT else BRIGHTNESS_SYMBOL
+            for ((dy, row) in glyph.withIndex()) {
+                for ((dx, c) in row.withIndex()) {
+                    if (c == '#' && !set(frame, length, x0 + dx, y0 + dy, brightness)) return false
+                }
+            }
+            x0 += glyph[0].length + 1
+        }
+        return true
+    }
+
+    private fun set(frame: IntArray, length: Int, x: Int, y: Int, brightness: Int): Boolean {
+        if (x !in 0 until length || y !in 0 until length || !MatrixIcons.isVisible(length, x, y)) return false
+        frame[y * length + x] = brightness
+        return true
     }
 }
