@@ -5,8 +5,13 @@ import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +57,55 @@ class SettingsActivity : Activity() {
         requireViewById<Button>(R.id.save).setOnClickListener { save() }
         testButton.setOnClickListener { test() }
         requireViewById<Button>(R.id.open_toys).setOnClickListener { openToysManager() }
+
+        setUpDisplaySettings()
+    }
+
+    /** View selection and rotation interval; saved immediately, the toy picks them up live. */
+    private fun setUpDisplaySettings() {
+        val displayStore = DisplaySettingsStore(applicationContext)
+        var settings = displayStore.load()
+
+        val boxes = mapOf(
+            Screens.View.UPTIME to R.id.view_uptime,
+            Screens.View.GUESTS to R.id.view_guests,
+            Screens.View.CPU to R.id.view_cpu,
+            Screens.View.MEM to R.id.view_mem,
+            Screens.View.DISK to R.id.view_disk,
+            Screens.View.CLOCK to R.id.view_clock,
+        ).mapValues { (_, id) -> requireViewById<CheckBox>(id) }
+
+        for ((view, box) in boxes) {
+            box.isChecked = view in settings.views
+            box.setOnCheckedChangeListener { _, checked ->
+                val views = if (checked) settings.views + view else settings.views - view
+                if (views.isEmpty()) {
+                    box.isChecked = true
+                    Toast.makeText(this, R.string.need_one_view, Toast.LENGTH_SHORT).show()
+                    return@setOnCheckedChangeListener
+                }
+                settings = settings.copy(views = views)
+                displayStore.save(settings)
+            }
+        }
+
+        val choices = DisplaySettings.INTERVAL_CHOICES
+        val interval = requireViewById<Spinner>(R.id.interval)
+        interval.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            choices.map { getString(R.string.interval_seconds, it) },
+        )
+        interval.setSelection(choices.indexOf(settings.intervalSeconds).coerceAtLeast(0))
+        interval.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (choices[position] == settings.intervalSeconds) return
+                settings = settings.copy(intervalSeconds = choices[position])
+                displayStore.save(settings)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     override fun onDestroy() {

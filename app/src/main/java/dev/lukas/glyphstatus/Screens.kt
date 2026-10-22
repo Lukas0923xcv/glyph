@@ -6,13 +6,26 @@ package dev.lukas.glyphstatus
  */
 object Screens {
 
-    enum class View { UPTIME, GUESTS, CLOCK }
+    /** In rotation order. */
+    enum class View { UPTIME, GUESTS, CPU, MEM, DISK, CLOCK }
 
-    /** Views that have data to show, in rotation order. */
-    fun views(status: CachedStatus?): List<View> = buildList {
-        if (status?.up == true && status.uptimeSeconds != null) add(View.UPTIME)
-        if (status?.up == true && status.guestsRunning != null && status.guestsTotal != null) add(View.GUESTS)
-        add(View.CLOCK)
+    /**
+     * The [enabled] views that have data to show, in rotation order.
+     * Falls back to the clock so the matrix is never empty.
+     */
+    fun views(status: CachedStatus?, enabled: Set<View>): List<View> {
+        val up = status?.up == true
+        val available = View.entries.filter { view ->
+            view in enabled && when (view) {
+                View.UPTIME -> up && status?.uptimeSeconds != null
+                View.GUESTS -> up && status?.guestsRunning != null && status.guestsTotal != null
+                View.CPU -> up && status?.cpuPercent != null
+                View.MEM -> up && status?.memPercent != null
+                View.DISK -> up && status?.diskPercent != null
+                View.CLOCK -> true
+            }
+        }
+        return available.ifEmpty { listOf(View.CLOCK) }
     }
 
     fun down(length: Int, blinkOn: Boolean): IntArray =
@@ -39,6 +52,9 @@ object Screens {
                 if (running == null || total == null) emptyList()
                 else listOf(listOf("$running/$total"), listOf("$running"))
             }
+            View.CPU -> percentCandidates('C', status?.cpuPercent)
+            View.MEM -> percentCandidates('R', status?.memPercent)
+            View.DISK -> percentCandidates('D', status?.diskPercent)
             View.CLOCK -> {
                 val h = if (is24Hour) hour.toString().padStart(2, '0') else (if (hour % 12 == 0) 12 else hour % 12).toString()
                 val m = minute.toString().padStart(2, '0')
@@ -46,6 +62,12 @@ object Screens {
             }
         }
         return MatrixText.render(length, candidates) ?: IntArray(length * length)
+    }
+
+    /** "C35" etc.; the letter tells the percentages apart. 100 falls back to 99 where it does not fit. */
+    private fun percentCandidates(label: Char, percent: Int?): List<List<String>> {
+        if (percent == null) return emptyList()
+        return listOf(listOf("$label$percent"), listOf("$label${percent.coerceAtMost(99)}"))
     }
 
     private fun uptimeCandidates(status: CachedStatus?, nowMillis: Long): List<List<String>> {

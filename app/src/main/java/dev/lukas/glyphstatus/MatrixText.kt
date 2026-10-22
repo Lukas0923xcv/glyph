@@ -1,7 +1,7 @@
 package dev.lukas.glyphstatus
 
 /**
- * Renders short texts (digits, '/', ':', 'd', 'h') onto the round Glyph Matrix.
+ * Renders short texts (digits, '/', ':', 'd', 'h', 'C', 'R', 'D') onto the round Glyph Matrix.
  * 13x13 uses a 3x5 font, 25x25 a 5x7 font. Digits are drawn at [BRIGHTNESS_DIGIT],
  * everything else at [BRIGHTNESS_SYMBOL].
  */
@@ -25,6 +25,9 @@ object MatrixText {
         ':' to arrayOf(".", "#", ".", "#", "."),
         'd' to arrayOf("..#", "..#", "###", "#.#", "###"),
         'h' to arrayOf("#..", "#..", "###", "#.#", "#.#"),
+        'C' to arrayOf("###", "#..", "#..", "#..", "###"),
+        'R' to arrayOf("##.", "#.#", "##.", "#.#", "#.#"),
+        'D' to arrayOf("##.", "#.#", "#.#", "#.#", "##."),
     )
 
     private val FONT_5X7 = mapOf(
@@ -42,6 +45,9 @@ object MatrixText {
         ':' to arrayOf(".", ".", "#", ".", "#", ".", "."),
         'd' to arrayOf("....#", "....#", ".####", "#...#", "#...#", "#...#", ".####"),
         'h' to arrayOf("#....", "#....", "#.##.", "##..#", "#...#", "#...#", "#...#"),
+        'C' to arrayOf(".###.", "#...#", "#....", "#....", "#....", "#...#", ".###."),
+        'R' to arrayOf("####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"),
+        'D' to arrayOf("####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."),
     )
 
     /**

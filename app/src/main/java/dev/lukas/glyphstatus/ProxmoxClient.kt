@@ -10,6 +10,7 @@ import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
+import kotlin.math.roundToInt
 
 data class CheckResult(
     val up: Boolean,
@@ -19,6 +20,11 @@ data class CheckResult(
     /** Running / total VMs and LXC containers (templates excluded). */
     val guestsRunning: Int? = null,
     val guestsTotal: Int? = null,
+    /** Highest CPU / RAM usage of the online nodes, 0..100. */
+    val cpuPercent: Int? = null,
+    val memPercent: Int? = null,
+    /** Usage of the fullest available storage, 0..100. */
+    val diskPercent: Int? = null,
 )
 
 object ProxmoxClient {
@@ -28,7 +34,7 @@ object ProxmoxClient {
     /**
      * Blocking. Must not be called on the main thread.
      * UP only if the request succeeds and every node reports "status": "online".
-     * When UP, the guest counts are fetched as well; their failure does not affect UP.
+     * When UP, guests and storage are fetched as well; their failure does not affect UP.
      */
     fun check(config: ServerConfig): CheckResult {
         val base = config.host.trim().trimEnd('/').toHttpUrlOrNull()
@@ -44,12 +50,8 @@ object ProxmoxClient {
         }
 
         val auth = "PVEAPIToken=${config.tokenId.trim()}=${config.secret.trim()}"
-        fun request(path: String, query: Pair<String, String>? = null) = Request.Builder()
-            .url(
-                base.newBuilder().addPathSegments(path)
-                    .apply { query?.let { addQueryParameter(it.first, it.second) } }
-                    .build()
-            )
+        fun request(path: String) = Request.Builder()
+            .url(base.newBuilder().addPathSegments(path).build())
             .header("Authorization", auth)
             .get()
             .build()
@@ -73,44 +75,60 @@ object ProxmoxClient {
             }
             if (!status.up) return status
 
-            val guests = try {
-                client.newCall(request("api2/json/cluster/resources", "type" to "vm")).execute().use { response ->
-                    if (response.isSuccessful) countGuests(response.body?.string().orEmpty()) else null
+            val resources = try {
+                client.newCall(request("api2/json/cluster/resources")).execute().use { response ->
+                    if (response.isSuccessful) parseResources(response.body?.string().orEmpty()) else null
                 }
             } catch (e: Exception) {
                 null
             }
-            return if (guests == null) {
-                status.copy(message = "${status.message} · VMs/LXC nicht lesbar")
-            } else {
-                status.copy(
-                    message = "${status.message} · ${guests.first}/${guests.second} VMs/LXC laufen",
-                    guestsRunning = guests.first,
-                    guestsTotal = guests.second,
-                )
+            if (resources == null) {
+                return status.copy(message = "${status.message} · VMs/LXC/Storage nicht lesbar")
             }
+            val diskText = resources.diskPercent?.let { " · Disk $it %" }.orEmpty()
+            return status.copy(
+                message = "${status.message} · ${resources.guestsRunning}/${resources.guestsTotal} VMs/LXC laufen$diskText",
+                guestsRunning = resources.guestsRunning,
+                guestsTotal = resources.guestsTotal,
+                diskPercent = resources.diskPercent,
+            )
         } finally {
             client.connectionPool.evictAll()
         }
     }
 
-    /** Returns (running, total) for VMs and LXC containers, ignoring templates. */
-    private fun countGuests(body: String): Pair<Int, Int>? {
-        val guests = try {
+    private class Resources(val guestsRunning: Int, val guestsTotal: Int, val diskPercent: Int?)
+
+    /** Counts VMs and LXC containers (ignoring templates) and finds the fullest available storage. */
+    private fun parseResources(body: String): Resources? {
+        val items = try {
             JSONObject(body).getJSONArray("data")
         } catch (e: Exception) {
             return null
         }
         var running = 0
         var total = 0
-        for (i in 0 until guests.length()) {
-            val guest = guests.getJSONObject(i)
-            if (guest.optInt("template", 0) == 1) continue
-            total++
-            if (guest.optString("status") == "running") running++
+        var disk: Int? = null
+        for (i in 0 until items.length()) {
+            val item = items.getJSONObject(i)
+            when (item.optString("type")) {
+                "qemu", "lxc" -> {
+                    if (item.optInt("template", 0) == 1) continue
+                    total++
+                    if (item.optString("status") == "running") running++
+                }
+                "storage" -> {
+                    val max = item.optLong("maxdisk", 0)
+                    if (item.optString("status") != "available" || max <= 0) continue
+                    val percent = percent(item.optLong("disk", 0).toDouble() / max)
+                    disk = maxOf(disk ?: 0, percent)
+                }
+            }
         }
-        return running to total
+        return Resources(running, total, disk)
     }
+
+    private fun percent(fraction: Double): Int = (fraction * 100).roundToInt().coerceIn(0, 100)
 
     private fun evaluateNodes(body: String): CheckResult {
         val nodes = try {
@@ -122,18 +140,37 @@ object ProxmoxClient {
 
         val offline = mutableListOf<String>()
         var uptime: Long? = null
+        var cpu: Int? = null
+        var mem: Int? = null
         for (i in 0 until nodes.length()) {
             val node = nodes.getJSONObject(i)
             if (node.optString("status") != "online") {
                 offline += "${node.optString("node", "?")} (${node.optString("status", "unbekannt")})"
-            } else if (node.has("uptime")) {
+                continue
+            }
+            // uptime/cpu/mem are only present when the token has Sys.Audit on the node.
+            if (node.has("uptime")) {
                 val seconds = node.optLong("uptime")
                 uptime = uptime?.let { minOf(it, seconds) } ?: seconds
             }
+            if (node.has("cpu")) cpu = maxOf(cpu ?: 0, percent(node.optDouble("cpu", 0.0)))
+            val maxMem = node.optLong("maxmem", 0)
+            if (node.has("mem") && maxMem > 0) mem = maxOf(mem ?: 0, percent(node.optLong("mem").toDouble() / maxMem))
         }
         return if (offline.isEmpty()) {
-            val uptimeText = uptime?.let { " · Uptime ${it / 86_400} T ${it % 86_400 / 3_600} h" }.orEmpty()
-            CheckResult(true, "${nodes.length()} Node(s) online$uptimeText", uptimeSeconds = uptime)
+            val details = buildString {
+                uptime?.let { append(" · Uptime ${it / 86_400} T ${it % 86_400 / 3_600} h") }
+                cpu?.let { append(" · CPU $it %") }
+                mem?.let { append(" · RAM $it %") }
+                if (uptime == null) append(" · keine Uptime/CPU/RAM – Token braucht PVEAuditor (Sys.Audit)")
+            }
+            CheckResult(
+                true,
+                "${nodes.length()} Node(s) online$details",
+                uptimeSeconds = uptime,
+                cpuPercent = cpu,
+                memPercent = mem,
+            )
         } else {
             CheckResult(false, "Nicht online: ${offline.joinToString()}")
         }

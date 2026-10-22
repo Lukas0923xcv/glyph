@@ -106,6 +106,75 @@
             android:layout_marginTop="16dp"
             android:textIsSelectable="true" />
 
+        <TextView
+            style="@android:style/TextAppearance.DeviceDefault.Medium"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="@string/section_display" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:text="@string/display_hint" />
+
+        <CheckBox
+            android:id="@+id/view_uptime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_uptime" />
+
+        <CheckBox
+            android:id="@+id/view_guests"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_guests" />
+
+        <CheckBox
+            android:id="@+id/view_cpu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_cpu" />
+
+        <CheckBox
+            android:id="@+id/view_mem"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_mem" />
+
+        <CheckBox
+            android:id="@+id/view_disk"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_disk" />
+
+        <CheckBox
+            android:id="@+id/view_clock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/view_clock" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/interval"
+                android:text="@string/label_interval" />
+
+            <Spinner
+                android:id="@+id/interval"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/open_toys"
             android:layout_width="match_parent"

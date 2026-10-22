@@ -3,6 +3,7 @@ package dev.lukas.glyphstatus
 import android.app.Service
 import android.content.ComponentName
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -35,6 +36,8 @@ class StatusToyService : Service() {
 
     /** null = never checked. */
     private var status: CachedStatus? = null
+    private var displayStore: DisplaySettingsStore? = null
+    private var display = DisplaySettings.DEFAULT
     private var tick = 0
     private var lastFrame: IntArray? = null
 
@@ -65,7 +68,13 @@ class StatusToyService : Service() {
         }
     }
 
-    /** Drives blinking (every tick) and the view rotation (every [TICKS_PER_VIEW] ticks). */
+    /** Picks up view/interval changes made in the app while the toy is running. */
+    private val displayListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        displayStore?.let { display = it.load() }
+        render()
+    }
+
+    /** Drives blinking (every tick) and the view rotation (every [DisplaySettings.intervalSeconds]). */
     private val ticker = object : Runnable {
         override fun run() {
             tick++
@@ -78,6 +87,10 @@ class StatusToyService : Service() {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         matrixLength = Common.getDeviceMatrixLength().takeIf { it == 13 || it == 25 } ?: 25
         status = StatusCache(this).load()
+        displayStore = DisplaySettingsStore(this).also {
+            display = it.load()
+            it.prefs.registerOnSharedPreferenceChangeListener(displayListener)
+        }
         tick = 0
         lastFrame = null
 
@@ -91,6 +104,8 @@ class StatusToyService : Service() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         mainHandler.removeCallbacks(ticker)
+        displayStore?.prefs?.unregisterOnSharedPreferenceChangeListener(displayListener)
+        displayStore = null
         scope?.cancel()
         scope = null
         checkJob = null
@@ -119,6 +134,9 @@ class StatusToyService : Service() {
                 uptimeSeconds = result.uptimeSeconds,
                 guestsRunning = result.guestsRunning,
                 guestsTotal = result.guestsTotal,
+                cpuPercent = result.cpuPercent,
+                memPercent = result.memPercent,
+                diskPercent = result.diskPercent,
                 checkedAtMillis = System.currentTimeMillis(),
             )
             StatusCache(applicationContext).store(newStatus)
@@ -134,8 +152,9 @@ class StatusToyService : Service() {
         val frame = if (current?.up == false) {
             Screens.down(matrixLength, blinkOn = tick % 2 == 0)
         } else {
-            val views = Screens.views(current)
-            val view = views[(tick / TICKS_PER_VIEW) % views.size]
+            val views = Screens.views(current, display.views)
+            val ticksPerView = (display.intervalSeconds * 1000 / TICK_MS).toInt().coerceAtLeast(1)
+            val view = views[(tick / ticksPerView) % views.size]
             val now = Calendar.getInstance()
             Screens.view(
                 length = matrixLength,
@@ -159,9 +178,7 @@ class StatusToyService : Service() {
 
     private companion object {
         const val TAG = "StatusToyService"
-        /** Blink half-period of the DOWN cross. */
+        /** Blink half-period of the DOWN cross; also the resolution of the rotation timer. */
         const val TICK_MS = 500L
-        /** 10 x 500 ms = each view is shown for 5 s. */
-        const val TICKS_PER_VIEW = 10
     }
 }
